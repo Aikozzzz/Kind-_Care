@@ -1,0 +1,12 @@
+.env
+# Local agent state; never include it in versioned or release source.
+.superpowers/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.log
+.coverage
+htmlcov/
+mosquitto/data/passwords

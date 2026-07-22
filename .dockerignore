@@ -1,0 +1,60 @@
+# Secrets and local environment
+.env
+**/.env
+
+# VCS, editor, and agent/tool state
+.git
+.git/**
+.hg
+.svn
+.idea
+.vscode
+.superpowers
+.superpowers/**
+**/.superpowers
+**/.superpowers/**
+.claude
+.opencode
+opencode.json
+opencode.jsonc
+
+# Python and JavaScript caches/build output
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+**/.pytest_cache
+.cache
+**/.cache
+.hypothesis
+.mypy_cache
+.ruff_cache
+.tox
+.nox
+node_modules
+**/node_modules
+*.egg-info
+build
+dist
+
+# Coverage, logs, and temporary output
+.coverage
+.coverage.*
+htmlcov
+coverage.xml
+*.log
+logs
+tmp
+temp
+
+# Local environments and database exports
+.venv
+venv
+env
+*.dump
+*.archive
+*.bson
+*.sqlite
+*.sqlite3
+dump
+backups

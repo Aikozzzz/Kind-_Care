@@ -1,0 +1,8 @@
+iniconfig==2.3.0
+dnspython==2.8.0
+packaging==26.2
+paho-mqtt==2.1.0
+pluggy==1.6.0
+Pygments==2.20.0
+pymongo==4.13.2
+pytest==8.4.1

@@ -1,0 +1,343 @@
+services:
+  backend:
+    restart: unless-stopped
+    build:
+      context: ./backend
+      target: production
+    environment:
+      APP_NAME: KindCare API
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      DATABASE_NAME: kindcare_db
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-kindcare}:${RABBITMQ_DEFAULT_PASS:-kindcare_dev_only}@rabbitmq:5672//
+      READINESS_TIMEOUT_SECONDS: ${READINESS_TIMEOUT_SECONDS:-2.0}
+      CORS_ORIGINS: http://localhost:8501
+      DASHBOARD_RECENT_ALERT_LIMIT: ${DASHBOARD_RECENT_ALERT_LIMIT:-10}
+      DASHBOARD_UPCOMING_REMINDER_LIMIT: ${DASHBOARD_UPCOMING_REMINDER_LIMIT:-10}
+      DASHBOARD_RECENT_REMINDER_LIMIT: ${DASHBOARD_RECENT_REMINDER_LIMIT:-10}
+      WEBSOCKET_POLL_INTERVAL: ${WEBSOCKET_POLL_INTERVAL:-1.0}
+      WEBSOCKET_HEARTBEAT_INTERVAL: ${WEBSOCKET_HEARTBEAT_INTERVAL:-15.0}
+      WEBSOCKET_ALLOWED_ORIGINS: ${WEBSOCKET_ALLOWED_ORIGINS:-http://localhost:8501,http://127.0.0.1:8501}
+      ACTIVITY_INACTIVITY_SECONDS: ${ACTIVITY_INACTIVITY_SECONDS:-3600}
+      DEVICE_OFFLINE_SECONDS: ${DEVICE_OFFLINE_SECONDS:-120}
+      DEVICE_OFFLINE_SCAN_SECONDS: ${DEVICE_OFFLINE_SCAN_SECONDS:-30}
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  worker:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+      target: production
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      DATABASE_NAME: kindcare_db
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-kindcare}:${RABBITMQ_DEFAULT_PASS:-kindcare_dev_only}@rabbitmq:5672//
+      ACTIVITY_INACTIVITY_SECONDS: ${ACTIVITY_INACTIVITY_SECONDS:-3600}
+      DEVICE_OFFLINE_SECONDS: ${DEVICE_OFFLINE_SECONDS:-120}
+      DEVICE_OFFLINE_SCAN_SECONDS: ${DEVICE_OFFLINE_SCAN_SECONDS:-30}
+      ACTIVITY_SCAN_SECONDS: ${ACTIVITY_SCAN_SECONDS:-30}
+      ACTIVITY_SCAN_BATCH_SIZE: ${ACTIVITY_SCAN_BATCH_SIZE:-100}
+      DEVICE_SCAN_BATCH_SIZE: ${DEVICE_SCAN_BATCH_SIZE:-100}
+      REMINDER_GRACE_SECONDS: ${REMINDER_GRACE_SECONDS:-300}
+      REMINDER_SCAN_SECONDS: ${REMINDER_SCAN_SECONDS:-30}
+      REMINDER_SCAN_BATCH_SIZE: ${REMINDER_SCAN_BATCH_SIZE:-100}
+      SCAN_LEASE_SECONDS: ${SCAN_LEASE_SECONDS:-60}
+      SERVICE_HEARTBEAT_SECONDS: ${SERVICE_HEARTBEAT_SECONDS:-15}
+      SERVICE_HEARTBEAT_MAX_AGE_SECONDS: ${SERVICE_HEARTBEAT_MAX_AGE_SECONDS:-60}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from workers.service_health import main; raise SystemExit(main())",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      backend:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  beat:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+      target: production
+    command:
+      [
+        "celery",
+        "-A",
+        "workers.celery_app:celery_app",
+        "beat",
+        "--loglevel=INFO",
+        "--schedule=/tmp/celerybeat-schedule",
+      ]
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      DATABASE_NAME: kindcare_db
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-kindcare}:${RABBITMQ_DEFAULT_PASS:-kindcare_dev_only}@rabbitmq:5672//
+      ACTIVITY_INACTIVITY_SECONDS: ${ACTIVITY_INACTIVITY_SECONDS:-3600}
+      DEVICE_OFFLINE_SECONDS: ${DEVICE_OFFLINE_SECONDS:-120}
+      DEVICE_OFFLINE_SCAN_SECONDS: ${DEVICE_OFFLINE_SCAN_SECONDS:-30}
+      ACTIVITY_SCAN_SECONDS: ${ACTIVITY_SCAN_SECONDS:-30}
+      ACTIVITY_SCAN_BATCH_SIZE: ${ACTIVITY_SCAN_BATCH_SIZE:-100}
+      DEVICE_SCAN_BATCH_SIZE: ${DEVICE_SCAN_BATCH_SIZE:-100}
+      REMINDER_GRACE_SECONDS: ${REMINDER_GRACE_SECONDS:-300}
+      REMINDER_SCAN_SECONDS: ${REMINDER_SCAN_SECONDS:-30}
+      REMINDER_SCAN_BATCH_SIZE: ${REMINDER_SCAN_BATCH_SIZE:-100}
+      SCAN_LEASE_SECONDS: ${SCAN_LEASE_SECONDS:-60}
+      SERVICE_HEARTBEAT_SECONDS: ${SERVICE_HEARTBEAT_SECONDS:-15}
+      SERVICE_HEARTBEAT_MAX_AGE_SECONDS: ${SERVICE_HEARTBEAT_MAX_AGE_SECONDS:-60}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from workers.service_health import main; raise SystemExit(main())",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    depends_on:
+      backend:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ./dashboard
+      target: production
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://backend:8000}
+      PUBLIC_WS_BASE_URL: ${PUBLIC_WS_BASE_URL:-ws://localhost:8000}
+      DEFAULT_ELDERLY_ID: ${DEFAULT_ELDERLY_ID:-E001}
+      WEBSOCKET_HEARTBEAT_INTERVAL: ${WEBSOCKET_HEARTBEAT_INTERVAL:-15.0}
+      DASHBOARD_REFRESH_SECONDS: ${DASHBOARD_REFRESH_SECONDS:-5.0}
+    ports:
+      - "127.0.0.1:8501:8501"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os, urllib.request; os.chdir('/app/dashboard'); import dashboard.api; urllib.request.urlopen('http://localhost:8501/_stcore/health', timeout=3)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  mqtt-ingestor:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: mqtt_ingestor/Dockerfile
+      target: production
+    environment:
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: 1883
+      MQTT_USERNAME: ${MQTT_USERNAME:-kindcare_mqtt}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-kindcare_mqtt_dev_only}
+      MQTT_CLIENT_ID: kindcare-mqtt-ingestor
+      MQTT_MAX_PAYLOAD_BYTES: ${MQTT_MAX_PAYLOAD_BYTES:-16384}
+      MQTT_QUEUE_SIZE: ${MQTT_QUEUE_SIZE:-100}
+      MQTT_HTTP_TIMEOUT: ${MQTT_HTTP_TIMEOUT:-10}
+      MQTT_RETRY_INITIAL_SECONDS: ${MQTT_RETRY_INITIAL_SECONDS:-0.5}
+      MQTT_RETRY_MAX_SECONDS: ${MQTT_RETRY_MAX_SECONDS:-30}
+      MQTT_RECONNECT_MIN_SECONDS: ${MQTT_RECONNECT_MIN_SECONDS:-1}
+      MQTT_RECONNECT_MAX_SECONDS: ${MQTT_RECONNECT_MAX_SECONDS:-30}
+      MQTT_HEALTH_FILE: /tmp/kindcare-mqtt-connected
+      MQTT_HEALTH_MAX_AGE_SECONDS: ${MQTT_HEALTH_MAX_AGE_SECONDS:-15}
+      API_BASE_URL: http://backend:8000
+    healthcheck:
+      test: ["CMD-SHELL", "python -m mqtt_ingestor.healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
+  mongodb:
+    image: mongo:8.0.26
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --eval \"try { rs.status().myState === 1 } catch (error) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongodb:27017'}]}); false }\" | grep true",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4.3.2-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-kindcare}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-kindcare_dev_only}
+    ports:
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mosquitto:
+    restart: unless-stopped
+    build:
+      context: ./mosquitto
+    environment:
+      MQTT_USERNAME: ${MQTT_USERNAME:-kindcare_mqtt}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-kindcare_mqtt_dev_only}
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - mosquitto_data:/mosquitto/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mosquitto_sub -h 127.0.0.1 -p 1883 -u \"$${MQTT_USERNAME}\" -P \"$${MQTT_PASSWORD}\" -t '$$SYS/broker/version' -C 1 -W 3 >/dev/null",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  backend-tests:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      DATABASE_NAME: kindcare_integration_test
+    command: ["python", "-m", "pytest", "-m", "integration", "-q"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  worker-integration:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+      target: production
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      DATABASE_NAME: kindcare_integration_test
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-kindcare}:${RABBITMQ_DEFAULT_PASS:-kindcare_dev_only}@rabbitmq:5672//
+    command:
+      [
+        "celery",
+        "-A",
+        "workers.celery_app:celery_app",
+        "worker",
+        "--loglevel=INFO",
+        "--without-gossip",
+        "--without-mingle",
+        "--queues=kindcare-integration",
+        "--concurrency=1",
+      ]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  worker-tests:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+      target: test
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      DATABASE_NAME: kindcare_integration_test
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-kindcare}:${RABBITMQ_DEFAULT_PASS:-kindcare_dev_only}@rabbitmq:5672//
+    command: ["python", "-m", "pytest", "-c", "workers/pytest.ini", "-m", "integration", "-q"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      worker-integration:
+        condition: service_started
+
+  mqtt-integration-tests:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: mqtt_ingestor/Dockerfile
+      target: test
+    environment:
+      API_BASE_URL: http://backend:8000
+      MONGO_URI: mongodb://mongodb:27017/?replicaSet=rs0
+      DATABASE_NAME: kindcare_db
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: 1883
+      MQTT_USERNAME: ${MQTT_USERNAME:-kindcare_mqtt}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-kindcare_mqtt_dev_only}
+    command:
+      [
+        "python",
+        "-m",
+        "pytest",
+        "-c",
+        "mqtt_ingestor/pytest.ini",
+        "mqtt_ingestor/tests/integration",
+        "-m",
+        "integration",
+        "-q",
+      ]
+    depends_on:
+      mqtt-ingestor:
+        condition: service_healthy
+      worker:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
+
+volumes:
+  mongodb_data:
+  mosquitto_data:

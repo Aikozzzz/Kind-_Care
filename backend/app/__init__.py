@@ -1,0 +1,1 @@
+"""KindCare backend application."""

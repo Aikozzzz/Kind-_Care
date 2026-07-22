@@ -1,0 +1,22 @@
+# Generated from the verified Python 3.12.13 test image with pip freeze.
+amqp==5.3.1
+billiard==4.2.4
+celery==5.5.3
+click==8.4.2
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.3.0
+dnspython==2.8.0
+iniconfig==2.3.0
+kombu==5.5.4
+packaging==26.2
+pluggy==1.6.0
+prompt_toolkit==3.0.52
+Pygments==2.20.0
+pymongo==4.13.2
+pytest==8.4.1
+python-dateutil==2.9.0.post0
+six==1.17.0
+tzdata==2026.3
+vine==5.1.0
+wcwidth==0.8.2
