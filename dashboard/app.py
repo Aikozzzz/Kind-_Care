@@ -3,7 +3,6 @@ import math
 import re
 from datetime import date, datetime
 from html import escape
-from urllib.parse import quote
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -78,6 +77,19 @@ VIEW_CONFIG = {
     "alerts": ("Alerts", "Alerts", "Active and recent care alerts"),
     "medication": ("Medication", "Medication", "Reminder schedule and actions"),
     "devices": ("Devices", "Devices", "Monitoring device and activity status"),
+}
+NAV_ICONS = {
+    "overview": ":material/dashboard:",
+    "residents": ":material/people:",
+    "monitoring": ":material/monitor_heart:",
+    "health": ":material/ecg_heart:",
+    "resident": ":material/person:",
+    "alerts": ":material/notifications:",
+    "activity": ":material/directions_walk:",
+    "medication": ":material/medication:",
+    "devices": ":material/devices_other:",
+    "family": ":material/group:",
+    "admin": ":material/admin_panel_settings:",
 }
 if is_admin:
     VIEW_CONFIG["admin"] = (
@@ -177,37 +189,39 @@ def run_action(action, success_message: str) -> None:
     st.rerun()
 
 
+def navigate_to(view: str, resident_id: str) -> None:
+    """Change the view without leaving the current Streamlit session."""
+    st.query_params.update(view=view, resident=resident_id)
+    st.rerun()
+
+
 def render_sidebar() -> None:
-    navigation_links = []
-    encoded_resident = quote(elderly_id, safe="")
-    for group_label, group_items in NAV_GROUPS:
-        links = []
-        for key in group_items:
-            label = VIEW_CONFIG[key][0]
-            class_name = "active" if key == selected_view else ""
-            aria_current = ' aria-current="page"' if key == selected_view else ""
-            links.append(
-                f'<a class="{class_name}" href="?view={key}&amp;resident={encoded_resident}" '
-                f'target="_self"{aria_current}>'
-                f'<span class="nav-icon {key}" aria-hidden="true"></span>{label}</a>'
-            )
-        navigation_links.append(
-            f'<div class="nav-group"><div class="nav-group-label">{escape(group_label)}</div>{"".join(links)}</div>'
-        )
-    navigation = "".join(navigation_links)
     with st.sidebar:
         st.markdown(
-            f"""
+            """
 <div class="brand-lockup">
   <div class="brand-mark">+</div>
   <div class="brand-copy"><strong>KindCare</strong><span>Caregiver Console</span></div>
 </div>
-<nav class="side-nav" aria-label="Caregiver dashboard sections">
-  {navigation}
-</nav>
 """,
             unsafe_allow_html=True,
         )
+        for group_label, group_items in NAV_GROUPS:
+            st.markdown(
+                f'<div class="nav-group-label">{escape(group_label)}</div>',
+                unsafe_allow_html=True,
+            )
+            for key in group_items:
+                label = VIEW_CONFIG[key][0]
+                st.button(
+                    label,
+                    key=f"nav-{key}",
+                    icon=NAV_ICONS[key],
+                    use_container_width=True,
+                    type="primary" if key == selected_view else "secondary",
+                    on_click=navigate_to,
+                    args=(key, elderly_id),
+                )
         if selected_view not in {"admin", "family"}:
             components.html(
                 build_live_panel_html(

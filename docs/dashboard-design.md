@@ -52,11 +52,12 @@ The main reading order is:
 6. Health trends, device/medication context, activity history, and recent alerts.
 7. Local academic-demo warning.
 
-The sidebar contains the KindCare caregiver-console lockup, grouped dashboard-view links,
-the browser-owned live WebSocket monitor, and caregiver identity. Each link sets a stable
-`?view=` URL with the resolved resident ID, updates the page heading and main content,
-and receives both the active visual treatment and `aria-current=page`. This preserves
-resident context when link navigation starts a new Streamlit WebSocket session.
+The sidebar contains the KindCare caregiver-console lockup, grouped dashboard-view
+buttons, the browser-owned live WebSocket monitor, and caregiver identity. Each button
+updates a stable `?view=` URL with the resolved resident ID inside the current Streamlit
+session, updates the page heading and main content, and receives active button styling.
+The bearer session therefore remains available while switching views; opening a fresh
+browser session still follows the normal login flow.
 Navigation uses simple CSS-drawn marks hidden
 from assistive technology while link text supplies each accessible name. A flex/minimum
 height layout pushes the sidebar identity toward the bottom on taller screens; the

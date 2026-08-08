@@ -68,7 +68,7 @@ def test_streamlit_app_renders_complete_monitoring_page(monkeypatch) -> None:
     assert not app.exception
     assert app.title[0].value == "Care overview"
     assert app.text_input[0].value == "E001"
-    assert app.button[0].label == "Refresh"
+    assert any(button.label == "Refresh" for button in app.button)
     assert summary_calls == ["E001"]
 
 
@@ -96,7 +96,9 @@ def test_sidebar_view_selection_changes_active_item_and_main_content(
 
     assert not app.exception
     assert app.title[0].value == title
-    assert f'<a class="active" href="?view={view}&amp;resident=E001"' in markup
+    expected_nav_label = "Health" if view == "resident" else title
+    assert any(button.label == expected_nav_label for button in app.button)
+    assert 'target="_self"' not in markup
     assert expected_content in markup
     assert "Care overview" not in markup
 
@@ -145,11 +147,12 @@ def test_streamlit_reminder_action_calls_rest_and_reruns(monkeypatch) -> None:
     )
 
     app = AppTest.from_file("dashboard/app.py", default_timeout=15).run()
-    app.button[1].click().run()
+    next(button for button in app.button if button.label.startswith("Mark Aspirin")).click().run()
 
     assert calls == [("E001", "reminder-1")]
-    assert app.button[1].label == "Mark Aspirin taken (Jul 18, 8:00 AM)"
-    assert "reminder-1" not in app.button[1].label
+    reminder_button = next(button for button in app.button if button.label.startswith("Mark Aspirin taken"))
+    assert reminder_button.label == "Mark Aspirin taken (Jul 18, 8:00 AM)"
+    assert "reminder-1" not in reminder_button.label
     assert app.success[0].value == "Aspirin reminder marked taken."
     assert not app.exception
 
@@ -177,7 +180,7 @@ def test_streamlit_action_error_is_accessibly_reported(monkeypatch) -> None:
 
     monkeypatch.setattr(KindCareAPI, "mark_reminder_taken", fail)
     app = AppTest.from_file("dashboard/app.py", default_timeout=15).run()
-    app.button[1].click().run()
+    next(button for button in app.button if button.label.startswith("Mark Aspirin")).click().run()
 
     assert "Action failed. transition conflict" in app.error[0].value
 
@@ -286,7 +289,8 @@ def test_search_resolves_exact_name_and_unique_case_insensitive_substring(monkey
     markup = "\n".join(markdown.value for markdown in app.markdown)
 
     assert summary_calls[-1] == "E002"
-    assert "?view=devices&amp;resident=E002" in markup
+    assert "Robert Chen" in markup
+    assert 'target="_self"' not in markup
     assert not app.error
 
 
@@ -381,3 +385,21 @@ def test_admin_view_renders_profile_and_family_management(monkeypatch) -> None:
     assert not family_app.exception
     assert family_app.title[0].value == "Family & Caregivers"
     assert any("Trusted family members" in markdown.value for markdown in family_app.markdown)
+
+
+def test_sidebar_navigation_preserves_authenticated_session(monkeypatch) -> None:
+    monkeypatch.setattr(KindCareAPI, "get_summary", lambda self, elderly_id: SUMMARY)
+    monkeypatch.setattr(KindCareAPI, "get_health", lambda self, elderly_id, limit=50: [])
+    monkeypatch.setattr(KindCareAPI, "get_alerts", lambda self, elderly_id, limit=20: [])
+    monkeypatch.setattr(KindCareAPI, "get_activity", lambda self, elderly_id, limit=50: [])
+
+    app = AppTest.from_file("dashboard/app.py", default_timeout=15)
+    app.session_state["access_token"] = "session-token"
+    app.session_state["account"] = {"display_name": "Demo Caregiver", "role": "staff"}
+    app.run()
+
+    next(button for button in app.button if button.label == "Alerts").click().run()
+
+    assert app.session_state["access_token"] == "session-token"
+    assert app.query_params["view"] == ["alerts"]
+    assert not app.exception

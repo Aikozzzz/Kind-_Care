@@ -418,8 +418,16 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
   background: var(--brand-raised);
   border-color: #6fa99a;
   color: #ffffff;
+  justify-content: flex-start;
 }
 [data-testid="stSidebar"] .stButton > button p { color: #ffffff; }
+[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+  background: var(--brand-soft);
+  border-color: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 750;
+}
+[data-testid="stSidebar"] .stButton > button[kind="primary"] p { color: var(--brand) !important; }
 button:focus-visible, input:focus-visible, a:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;

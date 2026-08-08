@@ -102,7 +102,6 @@ def test_sidebar_uses_accessibility_hidden_css_marks_and_bottom_identity() -> No
     source = Path("dashboard/app.py").read_text(encoding="utf-8")
     css = DASHBOARD_CSS.lower()
 
-    assert 'aria-hidden="true"' in source
     for letter in (">O<", ">R<", ">A<", ">M<", ">D<"):
         assert letter not in source
     for icon in ("overview", "resident", "alerts", "medication", "devices"):
@@ -120,8 +119,11 @@ def test_sidebar_links_select_real_dashboard_views() -> None:
 
     for view in ("overview", "resident", "alerts", "medication", "devices"):
         assert f'"{view}"' in source
-    assert "?view=" in source
-    assert 'aria-current="page"' in source
+    assert "def navigate_to" in source
+    assert "st.query_params.update" in source
+    assert "on_click=navigate_to" in source
+    assert "icon=NAV_ICONS[key]" in source
+    assert 'target="_self"' not in source
 
 
 def test_sidebar_groups_monitoring_and_management_navigation() -> None:

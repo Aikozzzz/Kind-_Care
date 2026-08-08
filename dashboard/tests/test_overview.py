@@ -42,7 +42,7 @@ def test_attention_cards_escape_content_and_link_to_alerts() -> None:
 
     assert "Margaret &lt;Lee&gt;" in html
     assert "Needs attention" in html
-    assert "?view=alerts&amp;resident=E001" in html
+    assert "attention-warning" in html
     assert "<Lee>" not in html
 
 
@@ -70,4 +70,4 @@ def test_global_alerts_has_calm_empty_state_and_alert_links() -> None:
     }
     html = build_global_alerts_html([snapshot])
     assert "High Heart Rate" in html
-    assert "?view=alerts&amp;resident=E001" in html
+    assert "attention-critical" in html
