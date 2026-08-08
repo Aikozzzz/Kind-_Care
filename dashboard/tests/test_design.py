@@ -9,6 +9,7 @@ def test_css_follows_kindcare_design_contract() -> None:
     css = DASHBOARD_CSS.lower()
 
     assert "#f4f7f8" in css
+    assert "color-scheme: light" in css
     assert "#10493f" in css
     assert "#ffffff" in css
     assert '"inter", "aptos", "segoe ui", sans-serif' in css
@@ -16,7 +17,7 @@ def test_css_follows_kindcare_design_contract() -> None:
     assert "border: 1px solid var(--border)" in css
     assert "border-radius: 16px" in css
     assert '[data-testid="stsidebar"]' in css
-    assert "width: 248px" in css
+    assert "width: min(248px, 100vw)" in css
     assert ".resident-card" in css
     assert ".vitals-grid" in css
     assert ".overview-grid" in css
@@ -98,15 +99,14 @@ def test_risk_banner_detail_and_nested_text_wrap() -> None:
     )
 
 
-def test_sidebar_uses_accessibility_hidden_css_marks_and_bottom_identity() -> None:
+def test_sidebar_uses_compact_navigation_and_bottom_identity() -> None:
     source = Path("dashboard/app.py").read_text(encoding="utf-8")
     css = DASHBOARD_CSS.lower()
 
     for letter in (">O<", ">R<", ">A<", ">M<", ">D<"):
         assert letter not in source
-    for icon in ("overview", "resident", "alerts", "medication", "devices"):
-        assert f'"{icon}"' in source
-        assert f".nav-icon.{icon}" in css
+    assert "nav-icon" not in source
+    assert ".nav-icon" not in css
     assert '[data-testid="stsidebarusercontent"]' in css
     assert "min-height: calc(100vh" in css
     assert ".st-key-sidebar-caregiver" in css
@@ -114,15 +114,46 @@ def test_sidebar_uses_accessibility_hidden_css_marks_and_bottom_identity() -> No
     assert "overflow-y: auto" in css
 
 
+def test_sidebar_fits_content_and_only_scrolls_vertically() -> None:
+    css = DASHBOARD_CSS.lower()
+
+    assert '[data-testid="stsidebarcontent"]' in css
+    assert "box-sizing: border-box" in css
+    assert "max-width: 100%" in css
+    assert "min-width: 0" in css
+    assert "overflow-x: hidden" in css
+    assert "scrollbar-gutter: stable" in css
+    assert '[data-testid="stsidebar"] iframe' in css
+    assert "width: 100% !important" in css
+    assert ".st-key-nav-item-overview" in css
+    assert ".stbutton > button p" in css
+    assert "background: var(--brand-raised) !important" in css
+    assert "background: var(--brand-soft) !important" in css
+    assert '[data-testid="stselectbox"] [data-baseweb="select"] > div' in css
+    assert '[data-testid="stmultiselect"] [data-baseweb="tag"]' in css
+    assert 'aria-label*="password" i' in css
+    assert '[data-testid="stformsubmitbutton"] > button' in css
+    assert ".stapp" in css
+    assert '[data-testid="stdateinput"] [data-baseweb="input"]' in css
+    assert '[data-testid="sttextarea"] textarea' in css
+    assert 'background: var(--brand) !important' in css
+    assert 'padding-left: 40px' not in css
+
+
 def test_sidebar_links_select_real_dashboard_views() -> None:
     source = Path("dashboard/app.py").read_text(encoding="utf-8")
+    overview_source = Path("dashboard/components/overview.py").read_text(encoding="utf-8")
+    css = DASHBOARD_CSS.lower()
 
     for view in ("overview", "resident", "alerts", "medication", "devices"):
         assert f'"{view}"' in source
     assert "def navigate_to" in source
     assert "st.query_params.update" in source
     assert "on_click=navigate_to" in source
-    assert "icon=NAV_ICONS[key]" in source
+    assert "nav-icon" not in source
+    assert re.search(r"def navigate_to\([\s\S]*?\n\n\ndef render_sidebar", source).group(0).count("st.rerun()") == 0
+    assert re.search(r"def _navigate\([\s\S]*?\n\n\ndef build_overview_stats_html", overview_source).group(0).count("st.rerun()") == 0
+    assert "st-key-nav-item-overview" in css
     assert 'target="_self"' not in source
 
 

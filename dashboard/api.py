@@ -84,6 +84,9 @@ class KindCareAPI:
     def create_account(self, account: dict[str, object]) -> dict[str, Any]:
         return self._post("/api/auth/accounts", account)
 
+    def remove_family_account(self, account_id: str) -> dict[str, Any]:
+        return self._delete(f"/api/auth/accounts/{quote(account_id, safe='')}")
+
     def get_relationships(self, elderly_id: str) -> list[dict[str, Any]]:
         return self._get(
             "/api/relationships",

@@ -62,6 +62,17 @@ calls occur only after a dispatcher claims an intent.
 account creation is the supported family onboarding path. `account_elderly_relationships`
 stores explicit per-resident permissions. Administrator permission updates replace the
 permission list, while revocation sets `status=revoked` and retains the record for audit.
+Removing a family account sets `status=disabled`, invalidates its sessions, revokes its
+active relationships and Telegram bindings, and removes its pending Telegram link
+tokens in one transaction. The `unique_account_login_name` index is unique only where
+`status=active`, so a removed family login name can be reused without deleting audit
+records.
+
+Indexes:
+
+- `unique_account_id`: `{account_id: 1}`, unique.
+- `unique_account_login_name`: `{login_name: 1}`, unique with partial filter
+  `{status: "active"}`.
 
 `telegram_link_tokens` stores only SHA-256 hashes of short-lived one-time codes. The
 administrator-targeted link endpoint records the intended family `account_id`; the

@@ -387,6 +387,49 @@ def test_admin_view_renders_profile_and_family_management(monkeypatch) -> None:
     assert any("Trusted family members" in markdown.value for markdown in family_app.markdown)
 
 
+def test_family_telegram_code_uses_separate_widget_and_value_keys(monkeypatch) -> None:
+    profiles = [{**SUMMARY["profile"], "active": True, "date_of_birth": "1948-04-12"}]
+    relationship = {
+        "relationship_id": "relationship-1",
+        "account_id": "account-1",
+        "account_display_name": "Family Member",
+        "account_login_name": "family.login",
+        "relationship_type": "family",
+        "permissions": ["read_dashboard"],
+    }
+    monkeypatch.setattr(KindCareAPI, "get_profiles", lambda self, limit=100, include_inactive=False: profiles)
+    monkeypatch.setattr(KindCareAPI, "get_relationships", lambda self, elderly_id: [relationship])
+    monkeypatch.setattr(KindCareAPI, "get_telegram_bindings", lambda self, elderly_id: [])
+    monkeypatch.setattr(
+        KindCareAPI,
+        "create_family_telegram_link",
+        lambda self, account_id: {"code": "ABC123"},
+    )
+    removed_accounts = []
+    monkeypatch.setattr(
+        KindCareAPI,
+        "remove_family_account",
+        lambda self, account_id: removed_accounts.append(account_id) or {"status": "disabled"},
+    )
+
+    app = AppTest.from_file("dashboard/app.py", default_timeout=15)
+    app.session_state["account"] = {"display_name": "Demo Administrator", "role": "admin"}
+    app.query_params["view"] = "family"
+    app.run()
+
+    next(button for button in app.button if button.label == "Generate Telegram code").click().run()
+
+    assert not app.exception
+    assert app.session_state["family-code-value-account-1"] == "ABC123"
+    assert any("/link ABC123" in block.value for block in app.code)
+
+    next(check for check in app.checkbox if check.label == "Confirm remove family member").check().run()
+    next(button for button in app.button if button.label == "Remove family member").click().run()
+
+    assert removed_accounts == ["account-1"]
+    assert app.success[0].value == "Family member removed and login name released."
+
+
 def test_sidebar_navigation_preserves_authenticated_session(monkeypatch) -> None:
     monkeypatch.setattr(KindCareAPI, "get_summary", lambda self, elderly_id: SUMMARY)
     monkeypatch.setattr(KindCareAPI, "get_health", lambda self, elderly_id, limit=50: [])

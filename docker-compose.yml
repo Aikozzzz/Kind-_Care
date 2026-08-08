@@ -216,6 +216,9 @@ services:
       TELEGRAM_HTTP_TIMEOUT: ${TELEGRAM_HTTP_TIMEOUT:-10}
       TELEGRAM_POLL_TIMEOUT: ${TELEGRAM_POLL_TIMEOUT:-30}
       TELEGRAM_RETRY_SECONDS: ${TELEGRAM_RETRY_SECONDS:-5}
+      TELEGRAM_OFFSET_FILE: /var/lib/kindcare-telegram/offset
+    volumes:
+      - telegram_state:/var/lib/kindcare-telegram
     depends_on:
       backend:
         condition: service_healthy
@@ -367,3 +370,4 @@ services:
 volumes:
   mongodb_data:
   mosquitto_data:
+  telegram_state:

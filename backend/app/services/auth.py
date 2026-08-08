@@ -8,6 +8,7 @@ from uuid import uuid4
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo import ReturnDocument
 from starlette.requests import HTTPConnection
 
 from app.models.account import AccountCreate, AccountRecord, BootstrapAdminCreate, LoginRequest
@@ -117,6 +118,62 @@ class AuthService:
                 raise AuthConflict("Login name is already in use") from error
             raise
         return _account_record(document)
+
+    async def remove_family_account(
+        self, account_id: str, *, removed_by: str
+    ) -> AccountRecord | None:
+        now = datetime.now(UTC)
+
+        async with self.accounts.database.client.start_session() as session:
+            async def remove(session):
+                account = await self.accounts.find_one(
+                    {"account_id": account_id, "role": "family", "status": "active"},
+                    session=session,
+                )
+                if account is None:
+                    return None
+                removed = await self.accounts.find_one_and_update(
+                    {"account_id": account_id, "role": "family", "status": "active"},
+                    {
+                        "$set": {
+                            "status": "disabled",
+                            "updated_at": now,
+                            "removed_by_account_id": removed_by,
+                        },
+                        "$inc": {"auth_version": 1},
+                    },
+                    return_document=ReturnDocument.AFTER,
+                    session=session,
+                )
+                await self.sessions.update_many(
+                    {"account_id": account_id, "revoked_at": None},
+                    {"$set": {"revoked_at": now}},
+                    session=session,
+                )
+                await self.database.account_elderly_relationships.update_many(
+                    {"account_id": account_id, "status": "active"},
+                    {
+                        "$set": {
+                            "status": "revoked",
+                            "revoked_at": now,
+                            "updated_at": now,
+                        }
+                    },
+                    session=session,
+                )
+                await self.database.telegram_bindings.update_many(
+                    {"account_id": account_id, "revoked_at": None},
+                    {"$set": {"revoked_at": now}},
+                    session=session,
+                )
+                await self.database.telegram_link_tokens.delete_many(
+                    {"account_id": account_id, "consumed_at": None},
+                    session=session,
+                )
+                return removed
+
+            document = await session.with_transaction(remove)
+        return _account_record(document) if document is not None else None
 
     async def bootstrap_admin(self, request: BootstrapAdminCreate) -> AccountRecord:
         if await self.accounts.count_documents({}) != 0:

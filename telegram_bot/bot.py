@@ -4,6 +4,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 
 def _required(name: str) -> str:
@@ -19,7 +20,24 @@ SERVICE_TOKEN = _required("TELEGRAM_SERVICE_TOKEN")
 HTTP_TIMEOUT = float(os.environ.get("TELEGRAM_HTTP_TIMEOUT", "10"))
 POLL_TIMEOUT = int(os.environ.get("TELEGRAM_POLL_TIMEOUT", "30"))
 RETRY_SECONDS = float(os.environ.get("TELEGRAM_RETRY_SECONDS", "5"))
+OFFSET_FILE = Path(
+    os.environ.get("TELEGRAM_OFFSET_FILE", "/var/lib/kindcare-telegram/offset")
+)
 API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
+
+
+def load_offset(path: Path = OFFSET_FILE) -> int:
+    try:
+        return max(0, int(path.read_text(encoding="utf-8").strip()))
+    except (OSError, ValueError):
+        return 0
+
+
+def save_offset(offset: int, path: Path = OFFSET_FILE) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    temporary.write_text(f"{offset}\n", encoding="utf-8")
+    temporary.replace(path)
 
 
 def telegram_call(method: str, payload: dict[str, object]) -> dict[str, object]:
@@ -47,7 +65,9 @@ def backend_call(path: str, payload: dict[str, object]) -> dict[str, object] | N
     )
     try:
         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-            return json.loads(response.read()).get("data")
+            envelope = json.loads(response.read())
+            data = envelope.get("data") if isinstance(envelope, dict) else None
+            return data if isinstance(data, dict) else None
     except urllib.error.HTTPError:
         return None
 
@@ -143,7 +163,7 @@ def deliver_one() -> bool:
 
 
 def run() -> None:
-    offset = 0
+    offset = load_offset()
     while True:
         try:
             result = telegram_call(
@@ -151,8 +171,9 @@ def run() -> None:
                 {"offset": offset, "timeout": POLL_TIMEOUT, "allowed_updates": '["message"]'},
             )
             for update in result.get("result", []):
-                offset = max(offset, int(update["update_id"]) + 1)
                 handle_update(update)
+                offset = max(offset, int(update["update_id"]) + 1)
+                save_offset(offset)
             deliver_one()
         except (OSError, RuntimeError, ValueError, KeyError, TypeError):
             time.sleep(RETRY_SECONDS)

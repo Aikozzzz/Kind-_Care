@@ -396,7 +396,11 @@ async def create_indexes(database: AsyncDatabase) -> None:
             accounts, [("account_id", 1)], "unique_account_id", unique=True
         )
         await ensure_named_index(
-            accounts, [("login_name", 1)], "unique_account_login_name", unique=True
+            accounts,
+            [("login_name", 1)],
+            "unique_account_login_name",
+            unique=True,
+            partialFilterExpression={"status": "active"},
         )
     sessions = getattr(database, "auth_sessions", None)
     if sessions is not None:

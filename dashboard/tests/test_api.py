@@ -106,6 +106,16 @@ def test_api_accepts_created_response_for_account_creation() -> None:
     assert api.create_account({"role": "family"}) == {"account_id": "a1"}
 
 
+def test_api_removes_family_account() -> None:
+    session = Session([Response(200, {"success": True, "data": {"status": "disabled"}})])
+    api = KindCareAPI("http://backend:8000", session=session)
+
+    assert api.remove_family_account("account/1") == {"status": "disabled"}
+    assert session.calls == [
+        ("http://backend:8000/api/auth/accounts/account%2F1", None, 5.0)
+    ]
+
+
 def test_api_sends_bounded_history_parameters() -> None:
     session = Session(
         [

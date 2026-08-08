@@ -76,7 +76,7 @@ sidebar continues to scroll when viewport height is constrained.
 - `Medication` shows the complete bounded reminder set and mark-taken actions.
 - `Devices` shows current device state, current monitoring signals, and activity history.
 - `Family & Caregivers` is an administrator-only trusted-access workspace for family
-  accounts, permissions, one-time Telegram codes, and recipient unlinking.
+  accounts, permissions, one-time Telegram codes, recipient unlinking, and family-member removal.
 - `Administration` is visible only to administrators. It provides resident profile
   create/edit/archive/restore controls. It does not open a live resident WebSocket.
 

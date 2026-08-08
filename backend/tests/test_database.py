@@ -37,6 +37,7 @@ class RecordingCollection:
 class FakeDatabase:
     def __init__(self, stale_history_indexes: bool = False) -> None:
         self.elderly_profiles = RecordingCollection()
+        self.accounts = RecordingCollection()
         health_indexes = (
             {"health_history_latest": {"key": [("elderly_id", 1), ("recorded_at", -1)]}}
             if stale_history_indexes
@@ -68,6 +69,18 @@ async def test_create_indexes_creates_profile_health_and_alert_indexes() -> None
     database = FakeDatabase()
 
     await create_indexes(database)
+
+    assert database.accounts.calls == [
+        ([("account_id", 1)], {"unique": True, "name": "unique_account_id"}),
+        (
+            [("login_name", 1)],
+            {
+                "unique": True,
+                "name": "unique_account_login_name",
+                "partialFilterExpression": {"status": "active"},
+            },
+        ),
+    ]
 
     assert database.elderly_profiles.calls == [
         (

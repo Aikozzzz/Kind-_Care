@@ -93,6 +93,7 @@ write models. Profile models use Pydantic's default extra-field handling.
 | `POST /api/auth/logout` | `200` | Bearer session | `401` |
 | `GET /api/auth/me` | `200` | Bearer session | `401` |
 | `POST /api/auth/accounts` | `201` | Admin bearer session and account JSON | `401`, `403`, `409`, `422` |
+| `DELETE /api/auth/accounts/{account_id}` | `200` | Admin bearer session; active family account path ID | `401`, `403`, `404` |
 | `POST /api/auth/websocket-ticket/{elderly_id}` | `200` | Authorized bearer session | `401`, `404`, `422` |
 | `POST /api/relationships` | `201` | Admin bearer session and relationship JSON | `401`, `403`, `404`, `409`, `422` |
 | `GET /api/relationships` | `200` | Admin bearer session and optional `elderly_id` | `401`, `403`, `422` |

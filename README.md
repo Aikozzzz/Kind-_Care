@@ -230,7 +230,9 @@ private bot chat, the family member uses `/link CODE`; `/status E001` then retur
 minimal authorized status after the family relationship has the `query_telegram_status`
 permission. New alerts are delivered only when the relationship also has
 `receive_telegram_alerts`. Knowing `E001` alone never grants health access. Telegram is
-a third-party service and must not receive real medical data in this MVP.
+a third-party service and must not receive real medical data in this MVP. The polling
+offset is retained in the Compose `telegram_state` volume so restarting the bot does
+not replay already acknowledged commands.
 
 ### Administrator Management
 
@@ -244,6 +246,7 @@ views to:
 - Choose family status and Telegram-alert permissions.
 - Generate a family-specific Telegram link code.
 - Review or revoke individual Telegram bindings and family relationships.
+- Remove a family member, revoke all access, and release the login name for reuse.
 
 Archived profiles are excluded from normal caregiver views and do not receive pending
 Telegram alert deliveries. Restoring a profile makes its existing relationships usable

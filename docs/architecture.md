@@ -113,7 +113,9 @@ routes. `/link CODE` binds one private Telegram chat to an already authenticated
 family account. `/request E001` creates an access request, while `/status E001` returns
 a minimal role-authorized status projection only after approval. New alert messages
 contain only resident ID, alert type, and severity. The bot has no direct MongoDB
-access.
+access. Its last acknowledged Telegram update offset is stored in the persistent
+Compose `telegram_state` volume so a bot restart does not replay the pending update
+queue.
 
 Alert creators write a unique `alert_notification_events` record inside the same
 MongoDB transaction as the alert. The Telegram adapter claims these intents and calls

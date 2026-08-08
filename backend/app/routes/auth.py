@@ -97,6 +97,18 @@ async def create_account(
     return SuccessResponse(message="Account created", data=account)
 
 
+@router.delete("/accounts/{account_id}", response_model=SuccessResponse[AccountRecord])
+async def remove_family_account(
+    account_id: str,
+    service: AuthDependency,
+    principal: Annotated[Principal, Depends(require_admin_access)],
+) -> SuccessResponse[AccountRecord]:
+    account = await service.remove_family_account(account_id, removed_by=principal.account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Active family account was not found")
+    return SuccessResponse(message="Family account removed", data=account)
+
+
 @router.post("/websocket-ticket/{elderly_id}", response_model=SuccessResponse[dict[str, str]])
 async def websocket_ticket(
     elderly_id: ElderlyId,

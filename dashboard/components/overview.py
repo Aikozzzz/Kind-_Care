@@ -20,7 +20,6 @@ def _risk_state(summary: dict[str, object]) -> tuple[str, str, str]:
 
 def _navigate(view: str, resident_id: str) -> None:
     st.query_params.update(view=view, resident=resident_id)
-    st.rerun()
 
 
 def build_overview_stats_html(snapshots: list[dict[str, object]]) -> str:

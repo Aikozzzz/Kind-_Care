@@ -1,6 +1,7 @@
 DASHBOARD_CSS = """
 <style>
 :root {
+  color-scheme: light;
   --page: #f4f7f8;
   --surface: #ffffff;
   --ink: #172822;
@@ -22,6 +23,12 @@ DASHBOARD_CSS = """
   --surface-soft: #f8fbfa;
   --focus: #7eb7aa;
 }
+.stApp {
+  --background-color: var(--page);
+  --primary-color: var(--brand);
+  --secondary-background-color: var(--surface);
+  --text-color: var(--ink);
+}
 
 html, body, [class*="st-"], [data-testid="stAppViewContainer"] {
   color: var(--ink);
@@ -42,28 +49,57 @@ html, body, [class*="st-"], [data-testid="stAppViewContainer"] {
 
 [data-testid="stSidebar"] {
   background: var(--brand);
-  min-width: 248px;
-  width: 248px !important;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  width: min(248px, 100vw) !important;
 }
 
 [data-testid="stSidebarContent"] {
   background: var(--brand);
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 28px 20px 24px;
+  scrollbar-gutter: stable;
+  width: 100%;
 }
 
-[data-testid="stSidebarUserContent"] {
+[data-testid="stSidebarUserContent"],
+[data-testid="stSidebarUserContent"] > [data-testid="stVerticalBlock"] {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  max-width: 100%;
+  min-width: 0;
   min-height: calc(100vh - 52px);
+  overflow-x: hidden;
+  width: 100%;
 }
 
 [data-testid="stSidebarUserContent"] > [data-testid="stVerticalBlock"] {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: calc(100vh - 52px);
+  flex: 1 1 auto;
+}
+
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"],
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"],
+[data-testid="stSidebar"] [data-testid="stElementContainer"],
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+[data-testid="stSidebar"] iframe {
+  border: 0;
+  box-sizing: border-box;
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  width: 100% !important;
 }
 
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
@@ -98,7 +134,7 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
   margin: 32px 0 14px;
 }
 
-.brand-lockup { align-items: center; display: flex; gap: 12px; margin-bottom: 34px; }
+.brand-lockup { align-items: center; display: flex; gap: 12px; margin-bottom: 34px; max-width: 100%; min-width: 0; }
 .brand-mark {
   align-items: center;
   background: var(--brand-soft);
@@ -111,15 +147,20 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
   justify-content: center;
   width: 44px;
 }
+.brand-copy { min-width: 0; overflow-wrap: anywhere; }
 .brand-copy strong { color: #ffffff; display: block; font-size: 15px; }
 .brand-copy span { color: #afd2c9; font-size: 11px; }
 .side-nav { display: grid; gap: 22px; }
 .nav-group { display: grid; gap: 5px; }
 .nav-group-label {
+  box-sizing: border-box;
   color: #85b4a8;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .12em;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 0 14px 4px;
   text-transform: uppercase;
 }
@@ -136,41 +177,65 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
 }
 .side-nav a:hover, .side-nav a:focus-visible { background: #1b5a4f; color: #ffffff; }
 .side-nav a.active { background: var(--brand-soft); color: var(--brand); font-weight: 700; }
-.nav-icon {
-  flex: 0 0 20px;
-  height: 20px;
+.st-key-nav-item-overview, .st-key-nav-item-residents,
+.st-key-nav-item-monitoring, .st-key-nav-item-health,
+.st-key-nav-item-resident, .st-key-nav-item-alerts,
+.st-key-nav-item-activity, .st-key-nav-item-medication,
+.st-key-nav-item-devices, .st-key-nav-item-family,
+.st-key-nav-item-admin {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
   position: relative;
-  width: 20px;
+  width: 100%;
 }
-.nav-icon::before, .nav-icon::after { box-sizing: border-box; content: ""; position: absolute; }
-.nav-icon.overview::before { border: 2px solid currentColor; border-radius: 50%; inset: 3px; }
-.nav-icon.residents::before { border: 2px solid currentColor; border-radius: 50%; height: 7px; left: 7px; top: 1px; width: 7px; }
-.nav-icon.residents::after { border: 2px solid currentColor; border-bottom: 0; border-radius: 8px 8px 0 0; bottom: 1px; height: 8px; left: 3px; width: 14px; }
-.nav-icon.resident::before { border: 2px solid currentColor; border-radius: 50%; height: 7px; left: 7px; top: 1px; width: 7px; }
-.nav-icon.resident::after { border: 2px solid currentColor; border-bottom: 0; border-radius: 8px 8px 0 0; bottom: 1px; height: 8px; left: 3px; width: 14px; }
-.nav-icon.monitoring::before { border: 2px solid currentColor; border-radius: 3px; inset: 2px 1px 5px; }
-.nav-icon.monitoring::after { background: currentColor; bottom: 1px; height: 2px; left: 5px; width: 10px; }
-.nav-icon.health::before { border: 2px solid currentColor; border-radius: 50%; inset: 2px; }
-.nav-icon.health::after { background: currentColor; height: 2px; left: 5px; top: 9px; transform: rotate(-45deg); width: 9px; }
-.nav-icon.activity::before { border-bottom: 2px solid currentColor; border-left: 2px solid transparent; border-right: 2px solid transparent; height: 11px; left: 1px; top: 4px; transform: skewY(-25deg); width: 17px; }
-.nav-icon.family::before { border: 2px solid currentColor; border-radius: 50%; height: 6px; left: 3px; top: 2px; width: 6px; }
-.nav-icon.family::after { border: 2px solid currentColor; border-bottom: 0; border-radius: 8px 8px 0 0; bottom: 1px; height: 8px; left: 1px; width: 17px; }
-.nav-icon.admin::before { border: 2px solid currentColor; border-radius: 3px; inset: 2px; }
-.nav-icon.admin::after { background: currentColor; border-radius: 50%; height: 5px; left: 7px; top: 7px; width: 5px; }
-.nav-icon.alerts::before { border-bottom: 15px solid currentColor; border-left: 8px solid transparent; border-right: 8px solid transparent; left: 2px; top: 2px; }
-.nav-icon.medication::before { border: 2px solid currentColor; border-radius: 8px; height: 10px; left: 2px; top: 5px; transform: rotate(-35deg); width: 17px; }
-.nav-icon.devices::before { border: 2px solid currentColor; border-radius: 3px; inset: 1px 4px 3px; }
-.nav-icon.devices::after { background: currentColor; bottom: 0; height: 2px; left: 8px; width: 4px; }
+[data-testid="stSidebar"] .st-key-nav-item-overview .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-residents .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-monitoring .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-health .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-resident .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-alerts .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-activity .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-medication .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-devices .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-family .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-admin .stButton,
+[data-testid="stSidebar"] .st-key-nav-item-overview .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-residents .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-monitoring .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-health .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-resident .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-alerts .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-activity .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-medication .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-devices .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-family .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-item-admin .stButton > button {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+[data-testid="stSidebar"] .stButton > button p {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .st-key-sidebar-caregiver { margin-top: auto; padding-top: 24px; }
 .caregiver-card {
   align-items: center;
   background: #1b5a4f;
+  box-sizing: border-box;
   border-radius: 14px;
   display: flex;
   gap: 12px;
+  max-width: 100%;
+  min-width: 0;
   margin-top: 0;
   padding: 12px;
+  width: 100%;
 }
+.caregiver-card > div:last-child { min-width: 0; overflow-wrap: anywhere; }
 .caregiver-avatar {
   align-items: center;
   background: #f5c979;
@@ -403,28 +468,128 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
   color: var(--ink);
   min-height: 44px;
 }
-.stTextArea textarea { min-height: 100px; }
+.stTextArea textarea,
+[data-testid="stTextArea"] textarea {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  min-height: 100px;
+}
+.stTextInput input,
+.stDateInput input,
+[data-testid="stTextInput"] input,
+[data-testid="stDateInput"] input {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+}
+.stTextInput input::placeholder,
+.stTextArea textarea::placeholder,
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder { color: var(--muted) !important; }
+[data-testid="stDateInput"] [data-baseweb="input"] {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--ink) !important;
+}
+[data-testid="stDateInput"] button {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--brand) !important;
+}
+[data-testid="stDateInput"] button svg {
+  color: var(--brand) !important;
+  fill: var(--brand) !important;
+  stroke: var(--brand) !important;
+}
 [data-baseweb="select"] > div { border-color: var(--border); border-radius: 12px; min-height: 44px; }
 [data-testid="stCheckbox"] label { min-height: 44px; }
+[data-testid="stSelectbox"] [data-baseweb="select"] > div,
+[data-testid="stMultiSelect"] [data-baseweb="select"] > div {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--ink) !important;
+}
+[data-testid="stSelectbox"] [data-baseweb="select"] span,
+[data-testid="stMultiSelect"] [data-baseweb="select"] span,
+[data-testid="stSelectbox"] [data-baseweb="select"] input,
+[data-testid="stMultiSelect"] [data-baseweb="select"] input {
+  color: var(--ink) !important;
+}
+[data-testid="stSelectbox"] [data-baseweb="select"] svg,
+[data-testid="stMultiSelect"] [data-baseweb="select"] svg {
+  color: var(--brand) !important;
+  fill: var(--brand) !important;
+  stroke: var(--brand) !important;
+}
+[data-testid="stMultiSelect"] [data-baseweb="tag"] {
+  background: var(--brand-soft) !important;
+  color: var(--brand) !important;
+}
+[data-testid="stMultiSelect"] [data-baseweb="tag"] span,
+[data-testid="stMultiSelect"] [data-baseweb="tag"] svg {
+  color: var(--brand) !important;
+  fill: var(--brand) !important;
+}
+[data-baseweb="popover"] [role="option"],
+[data-baseweb="menu"] [role="option"] { color: var(--ink) !important; }
+[data-testid="stTextInput"] [data-baseweb="input"] {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--ink) !important;
+}
+[data-testid="stTextInput"] input {
+  background: transparent !important;
+  color: var(--ink) !important;
+}
+[data-testid="stTextInput"] [data-baseweb="input"] svg {
+  color: var(--brand) !important;
+  fill: var(--brand) !important;
+  stroke: var(--brand) !important;
+}
+[data-testid="stTextInput"] button[aria-label*="password" i] {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--brand) !important;
+}
+[data-testid="stTextInput"] button[aria-label*="password" i] svg {
+  color: var(--brand) !important;
+  fill: var(--brand) !important;
+  stroke: var(--brand) !important;
+}
+[data-testid="stFormSubmitButton"] > button,
+[data-testid="stFormSubmitButton"] > button p {
+  background: var(--brand) !important;
+  border-color: var(--brand) !important;
+  color: #ffffff !important;
+}
+[data-testid="stCheckbox"] [role="checkbox"] {
+  background: var(--surface) !important;
+  border-color: var(--brand) !important;
+}
+[data-testid="stCheckbox"] [role="checkbox"][aria-checked="true"] {
+  background: var(--brand) !important;
+}
 .stButton > button { height: auto; white-space: normal; }
 .stButton > button p { white-space: normal; }
 .stButton > button:hover { border-color: var(--success); color: var(--brand); }
-.stButton > button[kind="primary"] { background: var(--brand); }
+.stButton > button[kind="primary"] {
+  background: var(--brand) !important;
+  border-color: var(--brand) !important;
+}
 .stButton > button[kind="primary"],
 .stButton > button[kind="primary"] p { color: #ffffff !important; }
 .stButton > button[kind="primary"]:hover,
 .stButton > button[kind="primary"]:hover p { color: #ffffff !important; }
 [data-testid="stSidebar"] .stButton > button {
-  background: var(--brand-raised);
-  border-color: #6fa99a;
-  color: #ffffff;
+  background: var(--brand-raised) !important;
+  border-color: #6fa99a !important;
+  color: #ffffff !important;
   justify-content: flex-start;
 }
-[data-testid="stSidebar"] .stButton > button p { color: #ffffff; }
+[data-testid="stSidebar"] .stButton > button p { color: #ffffff !important; }
 [data-testid="stSidebar"] .stButton > button[kind="primary"] {
-  background: var(--brand-soft);
-  border-color: var(--brand-soft);
-  color: var(--brand);
+  background: var(--brand-soft) !important;
+  border-color: var(--brand-soft) !important;
+  color: var(--brand) !important;
   font-weight: 750;
 }
 [data-testid="stSidebar"] .stButton > button[kind="primary"] p { color: var(--brand) !important; }
@@ -452,6 +617,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 }
 
 @media (max-width: 640px) {
+  [data-testid="stSidebarContent"] { padding: 22px 14px 20px; }
   [data-testid="stMainBlockContainer"] { padding: 22px 16px 60px; }
   h1 { font-size: 26px; }
   .resident-card { align-items: start; grid-template-columns: auto 1fr; padding: 18px; }

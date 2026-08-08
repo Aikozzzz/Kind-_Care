@@ -72,6 +72,7 @@ POST   /api/auth/login
 POST   /api/auth/logout
 GET    /api/auth/me
 POST   /api/auth/accounts
+DELETE /api/auth/accounts/{account_id}
 POST   /api/auth/websocket-ticket/{elderly_id}
 POST   /api/relationships
 GET    /api/relationships

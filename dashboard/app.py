@@ -78,19 +78,6 @@ VIEW_CONFIG = {
     "medication": ("Medication", "Medication", "Reminder schedule and actions"),
     "devices": ("Devices", "Devices", "Monitoring device and activity status"),
 }
-NAV_ICONS = {
-    "overview": ":material/dashboard:",
-    "residents": ":material/people:",
-    "monitoring": ":material/monitor_heart:",
-    "health": ":material/ecg_heart:",
-    "resident": ":material/person:",
-    "alerts": ":material/notifications:",
-    "activity": ":material/directions_walk:",
-    "medication": ":material/medication:",
-    "devices": ":material/devices_other:",
-    "family": ":material/group:",
-    "admin": ":material/admin_panel_settings:",
-}
 if is_admin:
     VIEW_CONFIG["admin"] = (
         "Administration",
@@ -192,7 +179,6 @@ def run_action(action, success_message: str) -> None:
 def navigate_to(view: str, resident_id: str) -> None:
     """Change the view without leaving the current Streamlit session."""
     st.query_params.update(view=view, resident=resident_id)
-    st.rerun()
 
 
 def render_sidebar() -> None:
@@ -213,15 +199,15 @@ def render_sidebar() -> None:
             )
             for key in group_items:
                 label = VIEW_CONFIG[key][0]
-                st.button(
-                    label,
-                    key=f"nav-{key}",
-                    icon=NAV_ICONS[key],
-                    use_container_width=True,
-                    type="primary" if key == selected_view else "secondary",
-                    on_click=navigate_to,
-                    args=(key, elderly_id),
-                )
+                with st.container(key=f"nav-item-{key}"):
+                    st.button(
+                        label,
+                        key=f"nav-{key}",
+                        use_container_width=True,
+                        type="primary" if key == selected_view else "secondary",
+                        on_click=navigate_to,
+                        args=(key, elderly_id),
+                    )
         if selected_view not in {"admin", "family"}:
             components.html(
                 build_live_panel_html(
@@ -425,6 +411,7 @@ def render_family_page(family_profiles: list[dict[str, object]]) -> None:
         relationship_id = str(relationship["relationship_id"])
         account_id = str(relationship["account_id"])
         binding = bindings_by_account.get(account_id)
+        telegram_code_key = f"family-code-value-{account_id}"
         with st.container(border=True):
             st.markdown(
                 f"**{escape(str(relationship.get('account_display_name', 'Family member')))}** · "
@@ -443,13 +430,13 @@ def render_family_page(family_profiles: list[dict[str, object]]) -> None:
             with controls[1]:
                 if binding:
                     st.success("Telegram linked")
-                elif st.button("Generate Telegram code", key=f"family-code-{account_id}"):
+                elif st.button("Generate Telegram code", key=f"family-code-button-{account_id}"):
                     try:
                         link = api.create_family_telegram_link(account_id)
                     except DashboardAPIError as error:
                         st.error(f"Link code could not be created. {error}")
                     else:
-                        st.session_state[f"family-code-{account_id}"] = link["code"]
+                        st.session_state[telegram_code_key] = link["code"]
             with controls[2]:
                 confirm_key = f"family-confirm-{relationship_id}"
                 if st.checkbox("Confirm revoke", key=confirm_key) and st.button("Revoke access", key=f"family-revoke-{relationship_id}"):
@@ -460,7 +447,16 @@ def render_family_page(family_profiles: list[dict[str, object]]) -> None:
                 confirm_key = f"telegram-confirm-{binding['telegram_user_id']}"
                 if st.checkbox("Confirm unlink", key=confirm_key) and st.button("Unlink Telegram", key=f"family-unlink-{binding['telegram_user_id']}"):
                     run_action(lambda: api.revoke_telegram_binding(str(binding["telegram_user_id"])), "Telegram recipient unlinked.")
-            code = st.session_state.get(f"family-code-{account_id}")
+            st.caption("Remove the family member to revoke access, unlink Telegram, and free the login name for reuse.")
+            remove_key = f"family-remove-confirm-{account_id}"
+            if st.checkbox("Confirm remove family member", key=remove_key) and st.button(
+                "Remove family member", key=f"family-remove-{account_id}", type="primary"
+            ):
+                run_action(
+                    lambda: api.remove_family_account(account_id),
+                    "Family member removed and login name released.",
+                )
+            code = st.session_state.get(telegram_code_key)
             if code:
                 st.code(f"/link {code}")
                 st.caption("Send this one-time command in a private chat with the KindCare bot.")
@@ -738,5 +734,3 @@ def render_dashboard_snapshot() -> None:
 
 
 render_dashboard_snapshot()
-
-st.markdown('<div class="section-label">Local academic demonstration · not for clinical use</div>', unsafe_allow_html=True)
