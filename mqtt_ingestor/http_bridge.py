@@ -40,19 +40,25 @@ class HTTPBridge:
         base_url: str,
         timeout: float,
         opener=urlopen,
+        *,
+        api_token: str = "",
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.api_token = api_token
         self.opener = opener
 
     def send(self, prepared: PreparedRequest) -> HTTPResult:
+        headers = {
+            "Content-Type": "application/json",
+            "Idempotency-Key": prepared.idempotency_key,
+        }
+        if self.api_token:
+            headers["Authorization"] = f"Bearer {self.api_token}"
         request = Request(
             f"{self.base_url}{prepared.path}",
             data=json.dumps(prepared.body, separators=(",", ":")).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Idempotency-Key": prepared.idempotency_key,
-            },
+            headers=headers,
             method=prepared.method,
         )
         try:

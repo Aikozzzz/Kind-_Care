@@ -22,6 +22,7 @@ def build_live_panel_html(
     public_ws_base_url: str,
     elderly_id: str,
     heartbeat_interval_seconds: float,
+    ticket: str | None = None,
 ) -> str:
     parsed = urlsplit(public_ws_base_url)
     if parsed.scheme not in {"ws", "wss"} or not parsed.netloc:
@@ -35,6 +36,7 @@ def build_live_panel_html(
         .replace("__WS_URL__", _html_safe_json(ws_url))
         .replace("__ELDERLY_ID__", escape(elderly_id, quote=True))
         .replace("__HEARTBEAT_INTERVAL__", json.dumps(heartbeat_interval_seconds))
+        .replace("__AUTH_TICKET__", _html_safe_json(ticket or ""))
     )
 
 
@@ -103,6 +105,7 @@ status   waiting for first summary</pre>
 <script>
 __LIFECYCLE_JS__
 const wsUrl = __WS_URL__;
+const authTicket = __AUTH_TICKET__;
 const panel = document.querySelector(".live-card");
 const state = document.getElementById("state");
 const output = document.getElementById("output");
@@ -140,7 +143,7 @@ function connect(reason) {
 
   current.onopen = () => {
     if (!lifecycle.opened(token, Date.now())) return;
-    setState("Live", "live");
+    current.send(JSON.stringify({ type: "authenticate", ticket: authTicket }));
   };
   current.onmessage = (event) => {
     if (!lifecycle.isCurrent(token)) return;

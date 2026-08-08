@@ -7,6 +7,7 @@ from app.dependencies import get_elderly_service
 from app.main import app
 from app.models.elderly import ElderlyProfile, ElderlyProfileCreate, ElderlyProfileUpdate
 from app.services.elderly import ElderlyProfileAlreadyExists, ElderlyProfileNotFound
+from app.services.auth import Principal, get_current_principal, get_telemetry_principal
 
 
 class FakeElderlyService:
@@ -79,10 +80,32 @@ class FakeElderlyService:
         self.profiles[elderly_id] = deleted
         return deleted
 
+    async def restore_profile(self, elderly_id: str) -> ElderlyProfile:
+        profile = self.profiles.get(elderly_id)
+        if profile is None or profile.active:
+            raise ElderlyProfileNotFound(elderly_id)
+        restored = profile.model_copy(update={"active": True})
+        self.profiles[elderly_id] = restored
+        return restored
+
 
 @pytest.fixture
 def fake_service() -> FakeElderlyService:
     return FakeElderlyService()
+
+
+@pytest.fixture(autouse=True)
+def authenticated_test_principal():
+    principal = Principal(
+        account_id="test-admin",
+        login_name="test-admin",
+        display_name="Test administrator",
+        role="admin",
+    )
+    app.dependency_overrides[get_current_principal] = lambda: principal
+    app.dependency_overrides[get_telemetry_principal] = lambda: principal
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture

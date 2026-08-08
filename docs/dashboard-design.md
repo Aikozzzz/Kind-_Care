@@ -16,6 +16,10 @@ The implementation adapts the static composition to Streamlit without presenting
 controls that do not work. Existing REST actions, automatic refresh, WebSocket
 freshness, missing-data states, and local-demo warnings remain functional.
 
+Protected dashboard data is shown only after account login. The resident picker is
+populated from the authenticated account's authorized profiles; a resident ID in the
+URL is only a selection hint and cannot bypass backend relationship authorization.
+
 ## Product Intent
 
 The interface is a calm caregiver workspace optimized for rapid scanning:
@@ -40,16 +44,16 @@ workspace. Main content is limited to 1180px with 36px horizontal padding.
 
 The main reading order is:
 
-1. `Care overview` header, current date, resident name/ID search, and refresh action.
-2. Resident card with initials, ID, age, profile/device badges, and emergency contact.
-3. Warning or emergency action banner when current risk is not normal.
-4. Four vital cards: heart rate, oxygen, temperature, and activity.
-5. Health-trends area with device and medication context beside it.
-6. Activity history and recent alerts.
+1. Page header, current date, resident search context, and refresh action.
+2. Overview summary cards for active residents, critical alerts, attention states, and offline devices.
+3. Needs-attention queue with direct links to resident alerts.
+4. Resident status directory sorted by urgency, with stable reading and device context.
+5. Selected resident card, risk banner, and four current signals.
+6. Health trends, device/medication context, activity history, and recent alerts.
 7. Local academic-demo warning.
 
-The sidebar contains the KindCare caregiver-console lockup, dashboard-view links, the
-browser-owned live WebSocket monitor, and caregiver identity. Each link sets a stable
+The sidebar contains the KindCare caregiver-console lockup, grouped dashboard-view links,
+the browser-owned live WebSocket monitor, and caregiver identity. Each link sets a stable
 `?view=` URL with the resolved resident ID, updates the page heading and main content,
 and receives both the active visual treatment and `aria-current=page`. This preserves
 resident context when link navigation starts a new Streamlit WebSocket session.
@@ -60,16 +64,31 @@ sidebar continues to scroll when viewport height is constrained.
 
 ### Navigation Views
 
-- `Overview` retains the combined resident, risk, vitals, trends, device, medication,
-  activity, and alert composition.
-- `Resident` focuses on identity, current vitals, health trends, and activity history.
-- `Alerts` focuses on the current risk banner and recent alert actions.
+- `Overview` summarizes all authorized residents, prioritizes critical/attention states,
+  and then opens the selected resident's monitoring snapshot.
+- `Residents` provides an urgency-sorted resident directory with links into monitoring.
+- `Alerts` shows active alerts across the authorized resident set and retains selected
+  resident acknowledgement/resolution actions below the global queue.
+- `Monitoring` focuses on the selected resident's device and activity state.
+- `Health` focuses on identity, current vitals, health trends, and activity history.
+- `Activity` focuses on movement and device history.
 - `Medication` shows the complete bounded reminder set and mark-taken actions.
 - `Devices` shows current device state, current monitoring signals, and activity history.
+- `Family & Caregivers` is an administrator-only trusted-access workspace for family
+  accounts, permissions, one-time Telegram codes, and recipient unlinking.
+- `Administration` is visible only to administrators. It provides resident profile
+  create/edit/archive/restore controls. It does not open a live resident WebSocket.
 
 Resident identity and non-normal risk remain visible in every view so navigation cannot
 hide who is being monitored or an urgent care condition. Unknown `view` values safely
 fall back to Overview.
+
+The Administration and Family & Caregivers views are management workspaces rather than
+monitoring views. Together, they show archived profiles with explicit restore actions,
+keep medical notes in
+administrator-only forms, and identifies Telegram recipients by their linked account
+without displaying alert payloads. Family members complete one-time codes in a private
+bot chat; the dashboard never asks an administrator to enter a Telegram chat ID.
 
 ### Tablet And Mobile
 
@@ -227,11 +246,15 @@ unrelated black terminal.
 - Grid collapse preserves document reading order.
 - Auto-refresh does not move focus.
 - HTML generated from backend values is escaped.
+- Login and authorization failures are shown as ordinary readable form/error states;
+  no resident data is rendered before authentication succeeds.
 
 ## Implementation References
 
 - `dashboard/app.py`: page composition, sidebar, fragments, actions, risk banner.
 - `dashboard/styles.py`: Figma-derived tokens, desktop/sidebar layout, breakpoints.
+- `dashboard/components/overview.py`: aggregate status cards, attention queue, alert queue,
+  and resident directory.
 - `dashboard/components/summary.py`: resident, vital, device, chart, reminder, history,
   and alert components.
 - `dashboard/components/live.py`: sidebar WebSocket surface and safe browser embedding.

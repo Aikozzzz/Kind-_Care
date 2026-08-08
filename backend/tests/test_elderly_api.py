@@ -189,6 +189,15 @@ def test_delete_elderly_profile_soft_deletes_profile(client: TestClient) -> None
     assert client.get("/api/elderly/E001").status_code == 404
 
 
+def test_restore_elderly_profile_reactivates_archived_profile(client: TestClient) -> None:
+    response = client.post("/api/elderly/E002/restore")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"] == "Elderly profile restored successfully"
+    assert body["data"]["active"] is True
+
+
 @pytest.mark.parametrize(
     ("method", "request_kwargs"),
     [

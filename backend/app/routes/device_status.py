@@ -9,6 +9,7 @@ from app.models.elderly import ElderlyId
 from app.models.health import IdempotencyKey
 from app.services.device import DeviceEventService, derive_device_event_id
 from app.services.elderly import ElderlyProfileNotFound
+from app.services.auth import Principal, get_telemetry_principal, require_relationship_permission
 
 
 router = APIRouter(prefix="/api/device-status", tags=["device-status"])
@@ -19,6 +20,7 @@ async def queue_device_heartbeat(
     request: DeviceHeartbeatCreate,
     service: Annotated[DeviceEventService, Depends(get_device_service)],
     idempotency_key: Annotated[IdempotencyKey, Header(alias="Idempotency-Key")],
+    _: Annotated[Principal, Depends(get_telemetry_principal)],
 ) -> SuccessResponse[QueuedDeviceEvent]:
     try:
         event = await service.queue_event(
@@ -36,6 +38,7 @@ async def queue_device_heartbeat(
 async def list_device_history(
     elderly_id: ElderlyId,
     service: Annotated[DeviceEventService, Depends(get_device_service)],
+    _: Annotated[Principal, require_relationship_permission("read_device")],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
 ) -> SuccessResponse[list[DeviceEventRecord]]:

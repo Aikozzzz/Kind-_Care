@@ -7,6 +7,7 @@ from app.models.common import SuccessResponse
 from app.models.elderly import ElderlyId
 from app.models.health import AlertRecord, AlertSeverity, AlertStatus, AlertStatusUpdate
 from app.services.alerts import AlertConflict, AlertNotFound, AlertService
+from app.services.auth import Principal, require_relationship_permission, require_admin_access
 
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
@@ -17,6 +18,7 @@ ServiceDependency = Annotated[AlertService, Depends(get_alert_service)]
 async def list_alert_history(
     elderly_id: ElderlyId,
     service: ServiceDependency,
+    _: Annotated[Principal, require_relationship_permission("read_alerts")],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
     severity: Annotated[AlertSeverity | None, Query()] = None,
@@ -40,6 +42,7 @@ async def update_alert_status(
     alert_id: str,
     request: AlertStatusUpdate,
     service: ServiceDependency,
+    _: Annotated[Principal, Depends(require_admin_access)],
 ) -> SuccessResponse[AlertRecord]:
     try:
         alert = await service.update_status(alert_id, request.status)

@@ -1,7 +1,7 @@
 # KindCare Run And Rerun Instructions
 
-KindCare is a local demonstration system. It has no API authentication or TLS.
-Keep it on this computer and use only fictional demonstration data.
+KindCare is a local demonstration system with account authentication and resident
+relationships. It has no TLS. Keep it on this computer and use only fictional data.
 
 ## Requirements
 
@@ -29,6 +29,9 @@ Copy-Item .env.example .env
 Do not overwrite an existing `.env`. RabbitMQ usernames and passwords may contain
 only letters, numbers, `.`, `_`, `~`, and `-`.
 
+Set `AUTH_BOOTSTRAP_SECRET` in `.env` before a clean first run. The bootstrap secret
+is used only to create the first administrator and must not be committed.
+
 Build and start all eight services, then wait for their health checks:
 
 ```powershell
@@ -43,6 +46,24 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" | ConvertTo-Json -Depth 4
 
 The response should report `status` as `healthy`, with MongoDB and RabbitMQ both
 `available`.
+
+### Create The First Administrator
+
+Run once on a clean database, then keep the token in the current PowerShell window:
+
+```powershell
+$bootstrapSecret = "local_bootstrap_only"
+$adminBody = @{ login_name = "admin"; display_name = "Demo Administrator"; password = "ChangeThisDemoPassword123!" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/auth/bootstrap" `
+    -Headers @{ "X-Bootstrap-Secret" = $bootstrapSecret } `
+    -ContentType "application/json" -Body $adminBody
+$loginBody = @{ login_name = "admin"; password = "ChangeThisDemoPassword123!" } | ConvertTo-Json
+$login = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/auth/login" `
+    -ContentType "application/json" -Body $loginBody
+$authHeaders = @{ Authorization = "Bearer $($login.data.access_token)" }
+```
+
+If the administrator already exists, skip bootstrap and run only login.
 
 ### Create The Demo Resident
 
@@ -61,14 +82,14 @@ $profileBody = @{
 } | ConvertTo-Json
 
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/elderly" `
-    -ContentType "application/json" -Body $profileBody
+    -Headers $authHeaders -ContentType "application/json" -Body $profileBody
 ```
 
 If this returns HTTP `409`, `E001` already exists and does not need to be created
 again. Confirm it with:
 
 ```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/elderly/E001"
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/elderly/E001" -Headers $authHeaders
 ```
 
 Open the caregiver dashboard:
@@ -176,6 +197,22 @@ docker compose logs --tail 200 dashboard backend
 
 RabbitMQ management credentials and MQTT credentials come from the root `.env` file
 or, when it does not exist, from the defaults in `.env.example`.
+
+To enable the optional Telegram bot, set `TELEGRAM_BOT_TOKEN` and a random
+`TELEGRAM_SERVICE_TOKEN` in `.env`, then run:
+
+```powershell
+docker compose --profile telegram up --build -d --wait
+```
+
+Open the dashboard's `Family & Caregivers` view, create or select a family account for
+`E001`, and generate a one-time Telegram link code. Give the code to the family member;
+they must send `/link CODE` from a private chat with the bot. Use `/status E001` only
+with fictional demo data. The family relationship must have `query_telegram_status` for
+status and `receive_telegram_alerts` for alert delivery; knowing an ID is not enough.
+Administrators can archive/restore profiles from `Administration`, then update
+trusted-family permissions and revoke individual Telegram bindings from `Family &
+Caregivers`.
 
 ## Common Problems
 

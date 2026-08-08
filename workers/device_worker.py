@@ -14,6 +14,7 @@ from workers.activity_worker import (
     renew_scan_lease,
 )
 from workers.database import get_database
+from workers.notifications import enqueue_alert_notification
 from workers.health_worker import (
     EventPayloadConflict,
     TRANSIENT_DB_ERRORS,
@@ -197,6 +198,12 @@ def scan_offline_devices(
                     }
                 },
                 upsert=True,
+                session=session,
+            )
+            enqueue_alert_notification(
+                database,
+                alert_id=derive_public_alert_id(candidate["event_id"], "device_offline"),
+                elderly_id=candidate["elderly_id"],
                 session=session,
             )
             return 1

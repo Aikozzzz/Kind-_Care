@@ -12,6 +12,7 @@ from workers.activity_worker import (
 )
 from workers.celery_app import celery_app
 from workers.database import get_database
+from workers.notifications import enqueue_alert_notification
 from workers.health_worker import TRANSIENT_DB_ERRORS, derive_public_alert_id
 
 
@@ -95,6 +96,12 @@ def scan_missed_reminders(
                     }
                 },
                 upsert=True,
+                session=session,
+            )
+            enqueue_alert_notification(
+                database,
+                alert_id=derive_public_alert_id(reminder_id, "missed_reminder"),
+                elderly_id=candidate["elderly_id"],
                 session=session,
             )
             return 1

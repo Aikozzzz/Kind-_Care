@@ -8,6 +8,7 @@ from app.models.dashboard import DashboardSummary
 from app.models.elderly import ElderlyId
 from app.services.dashboard import DashboardService
 from app.services.elderly import ElderlyProfileNotFound
+from app.services.auth import Principal, require_relationship_permission
 
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -18,6 +19,7 @@ ServiceDependency = Annotated[DashboardService, Depends(get_dashboard_service)]
 async def get_dashboard_summary(
     elderly_id: ElderlyId,
     service: ServiceDependency,
+    _: Annotated[Principal, require_relationship_permission("read_dashboard")],
 ) -> SuccessResponse[DashboardSummary]:
     try:
         summary = await service.get_summary(elderly_id)

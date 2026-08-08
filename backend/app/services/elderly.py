@@ -62,6 +62,29 @@ class ElderlyProfileService:
             raise ElderlyProfileStorageUnavailable() from error
         return [ElderlyProfile.model_validate(document) for document in documents]
 
+    async def list_authorized_profiles(
+        self,
+        relationship_collection: AsyncCollection,
+        account_id: str,
+        limit: int,
+        offset: int,
+    ) -> list[ElderlyProfile]:
+        relationships = await relationship_collection.find(
+            {"account_id": account_id, "status": "active", "permissions": "read_profile"},
+            {"elderly_id": 1},
+        ).to_list(length=1000)
+        elderly_ids = [document["elderly_id"] for document in relationships]
+        if not elderly_ids:
+            return []
+        documents = await (
+            self.collection.find({"elderly_id": {"$in": elderly_ids}, "active": True})
+            .sort("elderly_id", 1)
+            .skip(offset)
+            .limit(limit)
+            .to_list(length=None)
+        )
+        return [ElderlyProfile.model_validate(document) for document in documents]
+
     async def get_profile(self, elderly_id: str) -> ElderlyProfile:
         try:
             document = await self.collection.find_one(
@@ -97,6 +120,19 @@ class ElderlyProfileService:
             document = await self.collection.find_one_and_update(
                 {"elderly_id": elderly_id, "active": True},
                 {"$set": {"active": False, "updated_at": datetime.now(UTC)}},
+                return_document=ReturnDocument.AFTER,
+            )
+        except PyMongoError as error:
+            raise ElderlyProfileStorageUnavailable() from error
+        if document is None:
+            raise ElderlyProfileNotFound(elderly_id)
+        return ElderlyProfile.model_validate(document)
+
+    async def restore_profile(self, elderly_id: str) -> ElderlyProfile:
+        try:
+            document = await self.collection.find_one_and_update(
+                {"elderly_id": elderly_id, "active": False},
+                {"$set": {"active": True, "updated_at": datetime.now(UTC)}},
                 return_document=ReturnDocument.AFTER,
             )
         except PyMongoError as error:

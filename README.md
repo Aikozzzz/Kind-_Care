@@ -5,8 +5,9 @@ client nodes submit health, activity, device, and reminder events; FastAPI valid
 and reserves event identity; RabbitMQ and Celery process telemetry; MongoDB stores
 profiles and monitoring state; and a Streamlit dashboard presents caregiver views.
 
-This release is a local demonstration, not a clinical or production system. It has
-no API authentication or authorization. Do not expose it to a public network or use
+This release is a local demonstration, not a clinical or production system. Protected
+API and dashboard data require account authentication and resident relationships.
+Telegram is an optional third-party channel. Do not expose the stack publicly or use
 real personal or medical data.
 
 ## Clean-Clone Quick Start
@@ -16,7 +17,7 @@ real personal or medical data.
 - Docker Desktop with Docker Compose v2 and the Linux container engine running.
 - Windows PowerShell 5.1 or PowerShell 7.
 - Free loopback ports `8000`, `8501`, `1883`, and `15672`.
-- At least 4 GB of memory available to Docker for eight default services.
+- At least 4 GB of memory available to Docker for the eight default services.
 
 From the repository root, optionally create a local Compose environment file:
 
@@ -27,6 +28,9 @@ Copy-Item .env.example .env
 The checked-in defaults work without `.env`. If you create it, change the demo
 RabbitMQ and MQTT passwords before sharing the machine. `.env` is ignored by both
 Git and the root Docker build context.
+
+For a clean database, set a local-only bootstrap secret in `.env` before starting,
+for example `AUTH_BOOTSTRAP_SECRET=local_bootstrap_only`. Never commit this value.
 
 Compose interpolates `RABBITMQ_DEFAULT_USER` and `RABBITMQ_DEFAULT_PASS` directly
 into AMQP URLs. Both values must contain only URI-unreserved
@@ -79,6 +83,31 @@ Expected HTTP `200` data:
 }
 ```
 
+### Create The First Administrator
+
+The first account is created once using the bootstrap header. Store the response token
+in the current PowerShell session only:
+
+```powershell
+$bootstrapSecret = "local_bootstrap_only"
+$adminBody = @{
+    login_name = "admin"
+    display_name = "Demo Administrator"
+    password = "ChangeThisDemoPassword123!"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/auth/bootstrap" `
+    -Headers @{ "X-Bootstrap-Secret" = $bootstrapSecret } `
+    -ContentType "application/json" -Body $adminBody
+
+$loginBody = @{ login_name = "admin"; password = "ChangeThisDemoPassword123!" } | ConvertTo-Json
+$login = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/auth/login" `
+    -ContentType "application/json" -Body $loginBody
+$authHeaders = @{ Authorization = "Bearer $($login.data.access_token)" }
+```
+
+If the administrator already exists, skip bootstrap and run only the login portion.
+
 Bootstrap the active `E001` demo profile before opening the dashboard or running
 either simulator:
 
@@ -95,7 +124,7 @@ $profileBody = @{
 } | ConvertTo-Json
 
 $profile = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/elderly" `
-    -ContentType "application/json" -Body $profileBody -TimeoutSec 10
+    -Headers $authHeaders -ContentType "application/json" -Body $profileBody -TimeoutSec 10
 $profile | ConvertTo-Json -Depth 4
 ```
 
@@ -125,22 +154,23 @@ If `E001` already exists, profile creation returns `409`; verify the existing ac
 profile with:
 
 ```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/elderly/E001"
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/elderly/E001" -Headers $authHeaders
 ```
 
 ### Local URLs
 
 | Interface | Host/browser URL | Credentials |
 | --- | --- | --- |
-| FastAPI | `http://127.0.0.1:8000` | None; local MVP only |
-| OpenAPI/Swagger | `http://127.0.0.1:8000/docs` | None |
-| Streamlit dashboard | `http://127.0.0.1:8501` | None |
+| FastAPI | `http://127.0.0.1:8000` | Bearer account token for protected routes |
+| OpenAPI/Swagger | `http://127.0.0.1:8000/docs` | Bearer account token for protected routes |
+| Streamlit dashboard | `http://127.0.0.1:8501` | KindCare account |
 | RabbitMQ management | `http://127.0.0.1:15672` | Root `.env` RabbitMQ values |
 | Mosquitto | `mqtt://127.0.0.1:1883` | Root `.env` MQTT values |
 
 MongoDB, RabbitMQ AMQP `5672`, and container-to-container HTTP are internal only.
 The default stack has eight services: `backend`, `worker`, `beat`, `dashboard`,
-`mqtt-ingestor`, `mongodb`, `rabbitmq`, and `mosquitto`.
+`mqtt-ingestor`, `mongodb`, `rabbitmq`, and `mosquitto`. The optional `telegram`
+Compose profile adds the outbound Telegram polling bot.
 
 ### Run Demonstration Clients
 
@@ -175,6 +205,50 @@ kindcare/{elderly_id}/reminder
 The complete payload and retry contract is in `docs/api-documentation.md`. The
 ingestor intentionally ignores and acknowledges retained messages to prevent stale
 replay.
+
+### Optional Telegram Bot
+
+Telegram is disabled unless explicitly configured. Set these values in the root `.env`
+with fictional demo data only:
+
+```text
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=<token from BotFather>
+TELEGRAM_SERVICE_TOKEN=<random internal service secret>
+```
+
+Start the optional polling adapter:
+
+```powershell
+docker compose --profile telegram up --build -d --wait
+```
+
+An authenticated KindCare account creates a link code through the backend API or a
+administrator dashboard. The administrator chooses a family account under
+Administration, generates a one-time code, and gives it to the family member. In the
+private bot chat, the family member uses `/link CODE`; `/status E001` then returns a
+minimal authorized status after the family relationship has the `query_telegram_status`
+permission. New alerts are delivered only when the relationship also has
+`receive_telegram_alerts`. Knowing `E001` alone never grants health access. Telegram is
+a third-party service and must not receive real medical data in this MVP.
+
+### Administrator Management
+
+An administrator can open the `Administration` and `Family & Caregivers` dashboard
+views to:
+
+- Add or edit elderly profiles.
+- Archive profiles without deleting their history.
+- Restore archived profiles.
+- Create multiple trusted family accounts for one resident.
+- Choose family status and Telegram-alert permissions.
+- Generate a family-specific Telegram link code.
+- Review or revoke individual Telegram bindings and family relationships.
+
+Archived profiles are excluded from normal caregiver views and do not receive pending
+Telegram alert deliveries. Restoring a profile makes its existing relationships usable
+again. Telegram alert messages contain only the resident ID, alert type, and severity;
+they do not include medical notes or vital-sign payloads.
 
 ## Stop And Cleanup
 
@@ -339,11 +413,12 @@ docker compose logs --tail 200 backend mongodb rabbitmq worker beat mosquitto mq
 
 ## Security Boundary
 
-The local MVP has no user/device authorization, TLS, per-device MQTT ACLs,
-credential rotation, remote secret management, or notification delivery. MQTT
-authentication protects only the local transport with shared demo credentials.
-Loopback bindings reduce accidental exposure but are not a production security
-model.
+The local MVP now requires bearer account authentication for protected HTTP routes,
+explicit account-to-resident relationships, and a telemetry service token. The demo
+still has no TLS, production secret management, credential rotation, per-device MQTT
+ACLs, or clinical authorization model. Optional Telegram polling sends third-party
+messages only when configured and must use fictional data. Loopback bindings reduce
+accidental exposure but are not a production security model.
 
 ## License
 

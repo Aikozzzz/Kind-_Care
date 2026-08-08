@@ -46,6 +46,7 @@ class Settings:
     reconnect_max_seconds: int
     health_file: str
     health_max_age_seconds: float
+    api_token: str = ""
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -67,6 +68,7 @@ class Settings:
             password=_required("MQTT_PASSWORD"),
             client_id=os.environ.get("MQTT_CLIENT_ID", "kindcare-mqtt-ingestor"),
             api_base_url=os.environ.get("API_BASE_URL", "http://backend:8000").rstrip("/"),
+            api_token=os.environ.get("TELEMETRY_SERVICE_TOKEN", ""),
             max_payload_bytes=_positive_int("MQTT_MAX_PAYLOAD_BYTES", "16384"),
             queue_size=_positive_int("MQTT_QUEUE_SIZE", "100"),
             http_timeout=_positive_float("MQTT_HTTP_TIMEOUT", "10"),

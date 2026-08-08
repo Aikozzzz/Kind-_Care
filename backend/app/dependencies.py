@@ -13,10 +13,18 @@ from app.services.activity import ActivityEventService, CeleryActivityDispatcher
 from app.services.device import CeleryDeviceDispatcher, DeviceEventService
 from app.services.alerts import AlertService
 from app.services.reminder import ReminderService
+from app.services.auth import AuthService
 
 
 def get_database(connection: HTTPConnection) -> AsyncDatabase:
     return connection.app.state.database
+
+
+def get_auth_service(
+    database: Annotated[AsyncDatabase, Depends(get_database)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> AuthService:
+    return AuthService(database, settings.auth_session_seconds)
 
 
 def get_elderly_service(

@@ -4,10 +4,10 @@
 
 KindCare is a local academic distributed elderly-monitoring MVP. It demonstrates
 validated ingestion, asynchronous processing, deterministic risk rules, durable
-idempotency, monitoring-state scanners, and a live caregiver dashboard. It is not a
-clinical system and has no HTTP user authentication/authorization, TLS, per-device
-MQTT ACLs, secret manager, replicated persistence, notification delivery, or
-production operations controls.
+idempotency, monitoring-state scanners, account/relationship authorization, optional
+Telegram notification delivery, and a live caregiver dashboard. It is not a clinical
+system and has no TLS, per-device MQTT ACLs, secret manager, replicated persistence,
+or production operations controls.
 
 ## Component Topology
 
@@ -24,15 +24,18 @@ The default Docker Compose project runs eight services:
 | `rabbitmq` | Celery broker and local management UI | Non-guest environment credentials |
 | `mosquitto` | Authenticated persistent MQTT 3.1.1 broker | Named `mosquitto_data` volume |
 
+The optional `telegram` Compose profile adds `telegram-bot`. It polls Telegram over
+outbound HTTPS, calls authenticated internal backend routes, and has no public port.
+
 ```text
-HTTP node --------------------------> FastAPI backend
+HTTP node --device token-----------> FastAPI backend
                                            |
                                            | confirmed Celery publish
                                            v
-MQTT node -> Mosquitto -> MQTT ingestor -> HTTP API -> RabbitMQ -> Worker
+MQTT node -> Mosquitto -> MQTT ingestor --service token--> HTTP API -> RabbitMQ -> Worker
                                                               |         |
                                                               |         v
-Caregiver browser <-> Streamlit ---- REST + WebSocket ------> API <-> MongoDB
+Caregiver browser <-> Streamlit ---- REST + ticketed WebSocket -> API <-> MongoDB
                          |                                      ^         ^
                          +-- browser owns WebSocket             |         |
                                                         Celery Beat ------+
@@ -58,9 +61,15 @@ FastAPI is the schema and orchestration authority. It owns:
 - Bounded history and dashboard summary queries.
 - One shared per-profile WebSocket polling channel per backend process.
 - MongoDB migrations, validator enforcement, and authoritative indexes at startup.
+- Account sessions, resident relationships, Telegram binding/status routes, and
+  durable alert-notification intent storage.
 
 Routes stay thin; services implement storage and transition logic. The API does not
 perform worker risk analysis or scanner threshold transitions.
+
+Authentication establishes an account or service principal; an active relationship and
+permission authorize a particular resident. An `elderly_id` selects a resource but
+never authorizes disclosure.
 
 ### RabbitMQ, Worker, And Beat
 
@@ -77,11 +86,38 @@ leases.
 
 ### Dashboard
 
-Streamlit calls only public backend REST routes. It does not read MongoDB or RabbitMQ.
+Streamlit calls authenticated backend REST routes. It does not read MongoDB or
+RabbitMQ. Login, authorized resident filtering, and short-lived single-use WebSocket
+tickets preserve the account relationship at the browser boundary.
 Two configurable fragments refresh current state and history/actions through REST.
 The embedded browser component, not the Streamlit Python process, opens the public
 WebSocket URL and manages reconnect, connection generations, stale-state timing, and
 terminal unknown-profile handling.
+Administrators additionally receive an Administration view for profile create/update,
+soft-delete/restore, family relationship permissions, and per-binding Telegram revoke
+actions. Family link codes target an existing family account; the family member must
+complete the binding from a private Telegram chat.
+
+### Accounts And Telegram
+
+Accounts are separate from elderly profiles. Opaque bearer sessions identify human
+accounts, while `account_elderly_relationships` grants explicit per-resident
+permissions. Family access begins as a request and requires staff/admin approval;
+administrators may also create a family account and relationship directly. Knowing an
+elderly ID is never sufficient for disclosure. Profile removal is an archive operation;
+history remains retained, archived profiles are not readable by normal caregivers, and
+pending Telegram alert intents are closed without delivery.
+
+The optional `telegram-bot` uses outbound long polling and authenticated backend
+routes. `/link CODE` binds one private Telegram chat to an already authenticated
+family account. `/request E001` creates an access request, while `/status E001` returns
+a minimal role-authorized status projection only after approval. New alert messages
+contain only resident ID, alert type, and severity. The bot has no direct MongoDB
+access.
+
+Alert creators write a unique `alert_notification_events` record inside the same
+MongoDB transaction as the alert. The Telegram adapter claims these intents and calls
+Telegram outside the transaction, then records per-recipient delivery outcomes.
 
 ### MQTT Broker And Ingestor
 

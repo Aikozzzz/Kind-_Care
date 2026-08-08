@@ -390,6 +390,119 @@ async def resolve_stale_inactivity_alerts(
 
 
 async def create_indexes(database: AsyncDatabase) -> None:
+    accounts = getattr(database, "accounts", None)
+    if accounts is not None:
+        await ensure_named_index(
+            accounts, [("account_id", 1)], "unique_account_id", unique=True
+        )
+        await ensure_named_index(
+            accounts, [("login_name", 1)], "unique_account_login_name", unique=True
+        )
+    sessions = getattr(database, "auth_sessions", None)
+    if sessions is not None:
+        await ensure_named_index(
+            sessions, [("token_hash", 1)], "unique_auth_session_token", unique=True
+        )
+        await ensure_named_index(
+            sessions, [("expires_at", 1)], "auth_session_expiry", expireAfterSeconds=0
+        )
+        await ensure_named_index(
+            sessions, [("account_id", 1), ("revoked_at", 1)], "auth_session_account"
+        )
+    websocket_tickets = getattr(database, "websocket_tickets", None)
+    if websocket_tickets is not None:
+        await ensure_named_index(
+            websocket_tickets,
+            [("token_hash", 1)],
+            "unique_websocket_ticket_token",
+            unique=True,
+        )
+        await ensure_named_index(
+            websocket_tickets,
+            [("expires_at", 1)],
+            "websocket_ticket_expiry",
+            expireAfterSeconds=0,
+        )
+    relationships = getattr(database, "account_elderly_relationships", None)
+    if relationships is not None:
+        await ensure_named_index(
+            relationships,
+            [("relationship_id", 1)],
+            "unique_relationship_id",
+            unique=True,
+        )
+        await ensure_named_index(
+            relationships,
+            [("account_id", 1), ("elderly_id", 1)],
+            "unique_account_elderly_relationship",
+            unique=True,
+        )
+        await ensure_named_index(
+            relationships,
+            [("elderly_id", 1), ("status", 1), ("permissions", 1)],
+            "elderly_relationship_lookup",
+        )
+    access_requests = getattr(database, "access_requests", None)
+    if access_requests is not None:
+        await ensure_named_index(
+            access_requests,
+            [("request_id", 1)],
+            "unique_access_request_id",
+            unique=True,
+        )
+        await ensure_named_index(
+            access_requests,
+            [("account_id", 1), ("elderly_id", 1), ("status", 1)],
+            "access_request_lookup",
+        )
+    telegram_links = getattr(database, "telegram_link_tokens", None)
+    if telegram_links is not None:
+        await ensure_named_index(
+            telegram_links, [("token_hash", 1)], "unique_telegram_link_token", unique=True
+        )
+        await ensure_named_index(
+            telegram_links, [("expires_at", 1)], "telegram_link_expiry", expireAfterSeconds=0
+        )
+    telegram_bindings = getattr(database, "telegram_bindings", None)
+    if telegram_bindings is not None:
+        await ensure_named_index(
+            telegram_bindings,
+            [("telegram_user_id", 1)],
+            "unique_telegram_user",
+            unique=True,
+        )
+        await ensure_named_index(
+            telegram_bindings,
+            [("account_id", 1), ("revoked_at", 1)],
+            "telegram_account_binding",
+        )
+    notification_events = getattr(database, "alert_notification_events", None)
+    if notification_events is not None:
+        await ensure_named_index(
+            notification_events,
+            [("alert_id", 1), ("notification_kind", 1)],
+            "unique_alert_notification_event",
+            unique=True,
+        )
+        await ensure_named_index(
+            notification_events,
+            [("notification_event_id", 1)],
+            "unique_notification_event_id",
+            unique=True,
+        )
+        await ensure_named_index(
+            notification_events,
+            [("status", 1), ("next_attempt_at", 1)],
+            "notification_delivery_queue",
+        )
+    telegram_deliveries = getattr(database, "telegram_deliveries", None)
+    if telegram_deliveries is not None:
+        await ensure_named_index(
+            telegram_deliveries,
+            [("notification_event_id", 1), ("telegram_user_id", 1)],
+            "unique_telegram_delivery",
+            unique=True,
+        )
     await database.elderly_profiles.create_index(
         "elderly_id",
         unique=True,

@@ -78,7 +78,9 @@ class MQTTIngestor:
         self.settings = settings
         self.client = client or create_client(settings)
         self.bridge = bridge or HTTPBridge(
-            settings.api_base_url, settings.http_timeout
+            settings.api_base_url,
+            settings.http_timeout,
+            api_token=settings.api_token,
         )
         clear_connected(settings.health_file)
         self.stop_event = threading.Event()

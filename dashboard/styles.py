@@ -19,6 +19,8 @@ DASHBOARD_CSS = """
   --danger: #d94848;
   --danger-text: #8f2020;
   --danger-soft: #fff1ef;
+  --surface-soft: #f8fbfa;
+  --focus: #7eb7aa;
 }
 
 html, body, [class*="st-"], [data-testid="stAppViewContainer"] {
@@ -79,6 +81,14 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
 }
 
 .page-subtitle { margin: -8px 0 0; }
+.toolbar-context {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+}
 .section-heading { margin: 0 0 14px; }
 .section-heading strong { display: block; font-size: 18px; }
 .section-label {
@@ -103,7 +113,16 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
 }
 .brand-copy strong { color: #ffffff; display: block; font-size: 15px; }
 .brand-copy span { color: #afd2c9; font-size: 11px; }
-.side-nav { display: grid; gap: 8px; }
+.side-nav { display: grid; gap: 22px; }
+.nav-group { display: grid; gap: 5px; }
+.nav-group-label {
+  color: #85b4a8;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  padding: 0 14px 4px;
+  text-transform: uppercase;
+}
 .side-nav a {
   align-items: center;
   border-radius: 12px;
@@ -125,8 +144,19 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
 }
 .nav-icon::before, .nav-icon::after { box-sizing: border-box; content: ""; position: absolute; }
 .nav-icon.overview::before { border: 2px solid currentColor; border-radius: 50%; inset: 3px; }
+.nav-icon.residents::before { border: 2px solid currentColor; border-radius: 50%; height: 7px; left: 7px; top: 1px; width: 7px; }
+.nav-icon.residents::after { border: 2px solid currentColor; border-bottom: 0; border-radius: 8px 8px 0 0; bottom: 1px; height: 8px; left: 3px; width: 14px; }
 .nav-icon.resident::before { border: 2px solid currentColor; border-radius: 50%; height: 7px; left: 7px; top: 1px; width: 7px; }
 .nav-icon.resident::after { border: 2px solid currentColor; border-bottom: 0; border-radius: 8px 8px 0 0; bottom: 1px; height: 8px; left: 3px; width: 14px; }
+.nav-icon.monitoring::before { border: 2px solid currentColor; border-radius: 3px; inset: 2px 1px 5px; }
+.nav-icon.monitoring::after { background: currentColor; bottom: 1px; height: 2px; left: 5px; width: 10px; }
+.nav-icon.health::before { border: 2px solid currentColor; border-radius: 50%; inset: 2px; }
+.nav-icon.health::after { background: currentColor; height: 2px; left: 5px; top: 9px; transform: rotate(-45deg); width: 9px; }
+.nav-icon.activity::before { border-bottom: 2px solid currentColor; border-left: 2px solid transparent; border-right: 2px solid transparent; height: 11px; left: 1px; top: 4px; transform: skewY(-25deg); width: 17px; }
+.nav-icon.family::before { border: 2px solid currentColor; border-radius: 50%; height: 6px; left: 3px; top: 2px; width: 6px; }
+.nav-icon.family::after { border: 2px solid currentColor; border-bottom: 0; border-radius: 8px 8px 0 0; bottom: 1px; height: 8px; left: 1px; width: 17px; }
+.nav-icon.admin::before { border: 2px solid currentColor; border-radius: 3px; inset: 2px; }
+.nav-icon.admin::after { background: currentColor; border-radius: 50%; height: 5px; left: 7px; top: 7px; width: 5px; }
 .nav-icon.alerts::before { border-bottom: 15px solid currentColor; border-left: 8px solid transparent; border-right: 8px solid transparent; left: 2px; top: 2px; }
 .nav-icon.medication::before { border: 2px solid currentColor; border-radius: 8px; height: 10px; left: 2px; top: 5px; transform: rotate(-35deg); width: 17px; }
 .nav-icon.devices::before { border: 2px solid currentColor; border-radius: 3px; inset: 1px 4px 3px; }
@@ -208,6 +238,9 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
   padding: 5px 10px;
 }
 .status-pill.profile-active, .status-pill.device-online { background: var(--success-soft); color: var(--brand); }
+.status-pill.risk-stable { background: var(--success-soft); color: var(--brand); }
+.status-pill.risk-warning { background: var(--warning-soft); color: #8b5a14; }
+.status-pill.risk-critical { background: var(--danger-soft); color: var(--danger-text); }
 .status-pill.device-offline { background: var(--danger-soft); color: var(--danger-text); }
 .status-pill.device-unavailable { background: #edf1f0; color: var(--muted); }
 .contact-block { min-width: 180px; text-align: right; }
@@ -254,6 +287,70 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
 .metric-unit { color: var(--muted); font-size: 12px; font-weight: 600; margin-left: 3px; }
 .metric-note { color: var(--muted); font-size: 11px; margin-top: 8px; }
 
+.overview-stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 24px 0 30px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  min-height: 124px;
+  padding: 16px;
+}
+.stat-card-top { align-items: center; color: var(--muted); display: flex; font-size: 11px; font-weight: 700; justify-content: space-between; }
+.stat-card strong { display: block; font-size: 28px; letter-spacing: -.03em; margin-top: 16px; }
+.stat-card small, .directory-card small, .attention-card small { color: var(--muted); display: block; font-size: 11px; line-height: 1.4; }
+.stat-marker, .attention-marker { background: var(--success); border-radius: 50%; display: inline-block; height: 9px; width: 9px; }
+.stat-critical .stat-marker, .attention-critical .attention-marker { background: var(--danger); }
+.stat-warning .stat-marker, .attention-warning .attention-marker { background: var(--warning); }
+.stat-offline .stat-marker, .attention-offline .attention-marker { background: var(--danger-text); }
+.stat-info .stat-marker { background: var(--info); }
+
+.attention-list, .directory-list { display: grid; gap: 10px; }
+.attention-card, .directory-card {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--ink);
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+.attention-card { grid-template-columns: auto 1fr auto; }
+.attention-card:hover, .attention-card:focus-visible, .directory-card:hover, .directory-card:focus-visible { border-color: var(--success); background: var(--surface-soft); }
+.attention-critical { border-left: 4px solid var(--danger); }
+.attention-warning { border-left: 4px solid var(--warning); }
+.attention-offline { border-left: 4px solid var(--danger-text); }
+.attention-marker { align-items: center; color: #ffffff; display: flex; font-size: 12px; font-weight: 800; height: 30px; justify-content: center; width: 30px; }
+.attention-copy strong, .directory-main strong { display: block; font-size: 14px; }
+.attention-state { color: var(--danger-text); font-size: 12px; font-weight: 750; text-align: right; }
+.attention-warning .attention-state { color: #8b5a14; }
+.attention-state small { font-weight: 500; margin-top: 2px; }
+.directory-card { grid-template-columns: auto minmax(140px, 1fr) minmax(140px, 1fr) 90px 90px; }
+.directory-critical { border-left: 4px solid var(--danger); }
+.directory-warning { border-left: 4px solid var(--warning); }
+.directory-offline { border-left: 4px solid var(--danger-text); }
+.directory-avatar { align-items: center; background: var(--brand-soft); border-radius: 50%; color: var(--brand); display: flex; font-size: 12px; font-weight: 800; height: 38px; justify-content: center; width: 38px; }
+.directory-main small, .directory-reading small, .directory-device small { margin-top: 3px; }
+.directory-status b, .directory-reading b, .directory-device b { display: block; font-size: 12px; }
+.directory-critical .directory-status b { color: var(--danger-text); }
+.directory-warning .directory-status b { color: #8b5a14; }
+.directory-offline .directory-status b { color: var(--danger-text); }
+.directory-device { border-left: 1px solid var(--border); padding-left: 12px; }
+
+.stExpander {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.stExpander summary { min-height: 44px; }
+
 .overview-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.85fr) minmax(280px, 1fr); margin-top: 24px; }
 .content-card, .device-card { padding: 20px; }
 .content-card { min-height: 430px; }
@@ -281,6 +378,10 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
 .alert-row { align-items: start; display: grid; gap: 14px; grid-template-columns: 100px 1fr 145px; }
 .alert-warning { border-left: 4px solid var(--warning); }
 .alert-emergency { border-left: 4px solid var(--danger); }
+.alert-severity { font-size: 12px; font-weight: 800; }
+.alert-severity.emergency { color: var(--danger-text); }
+.alert-severity.warning { color: #8b5a14; }
+.alert-status { color: var(--ink); font-weight: 700; }
 .alert-message { color: var(--body); }
 .alert-time { text-align: right; }
 .reminder-row { display: grid; gap: 6px; }
@@ -295,13 +396,16 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
 .status-no-data { border-left: 4px solid var(--muted); }
 .state-success { border-left: 4px solid var(--success); }
 
-.stButton > button, .stTextInput input {
+.stButton > button, .stTextInput input, .stTextArea textarea, .stDateInput input {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--ink);
   min-height: 44px;
 }
+.stTextArea textarea { min-height: 100px; }
+[data-baseweb="select"] > div { border-color: var(--border); border-radius: 12px; min-height: 44px; }
+[data-testid="stCheckbox"] label { min-height: 44px; }
 .stButton > button { height: auto; white-space: normal; }
 .stButton > button p { white-space: normal; }
 .stButton > button:hover { border-color: var(--success); color: var(--brand); }
@@ -310,8 +414,14 @@ h2, h3 { font-size: 18px; line-height: 1.35; }
 .stButton > button[kind="primary"] p { color: #ffffff !important; }
 .stButton > button[kind="primary"]:hover,
 .stButton > button[kind="primary"]:hover p { color: #ffffff !important; }
+[data-testid="stSidebar"] .stButton > button {
+  background: var(--brand-raised);
+  border-color: #6fa99a;
+  color: #ffffff;
+}
+[data-testid="stSidebar"] .stButton > button p { color: #ffffff; }
 button:focus-visible, input:focus-visible, a:focus-visible {
-  outline: 3px solid #7eb7aa;
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -326,7 +436,10 @@ button:focus-visible, input:focus-visible, a:focus-visible {
     width: 100%;
   }
   .vitals-grid { grid-template-columns: 1fr 1fr; }
+  .overview-stats { grid-template-columns: 1fr 1fr; }
   .overview-grid { grid-template-columns: 1fr; }
+  .directory-card { grid-template-columns: auto 1fr 1fr; }
+  .directory-reading, .directory-device { border-left: 0; grid-column: span 1; padding-left: 0; }
   .content-card { min-height: 360px; }
 }
 
@@ -336,6 +449,11 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   .resident-card { align-items: start; grid-template-columns: auto 1fr; padding: 18px; }
   .contact-block { grid-column: 1 / -1; text-align: left; }
   .vitals-grid, .telemetry-grid { grid-template-columns: 1fr; }
+  .overview-stats { grid-template-columns: 1fr; }
+  .directory-card { grid-template-columns: auto 1fr; }
+  .directory-status, .directory-reading, .directory-device { grid-column: 2; }
+  .attention-card { grid-template-columns: auto 1fr; }
+  .attention-state { grid-column: 2; text-align: left; }
   .metric-card { min-height: 124px; }
   .alert-row { grid-template-columns: 1fr; }
   .alert-time { text-align: left; }

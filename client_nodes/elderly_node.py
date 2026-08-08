@@ -40,6 +40,7 @@ class ElderlyNodeClient:
         opener: Callable[..., object] = urlopen,
         sleep: Callable[[float], None] = time.sleep,
         key_factory: Callable[[], str] = lambda: uuid4().hex,
+        auth_token: str = "",
     ) -> None:
         self.health_url = f"{base_url.rstrip('/')}/api/health"
         self.activity_url = f"{base_url.rstrip('/')}/api/activity"
@@ -51,6 +52,13 @@ class ElderlyNodeClient:
         self.opener = opener
         self.sleep = sleep
         self.key_factory = key_factory
+        self.auth_token = auth_token
+
+    def _headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
+        headers = dict(extra or {})
+        if self.auth_token:
+            headers["Authorization"] = f"Bearer {self.auth_token}"
+        return headers
 
     def send_health(
         self,
@@ -86,7 +94,7 @@ class ElderlyNodeClient:
             "POST",
             payload,
             "Reminder",
-            {"Idempotency-Key": event_key},
+            self._headers({"Idempotency-Key": event_key}),
         )
         return ReminderResult(
             reminder_id=str(data["reminder_id"]),
@@ -109,7 +117,7 @@ class ElderlyNodeClient:
         if not 1 <= limit <= 100:
             raise ValueError("limit must be between 1 and 100")
         url = f"{self.reminders_url}/{quote(elderly_id, safe='')}?limit={limit}"
-        request = Request(url, method="GET")
+        request = Request(url, headers=self._headers(), method="GET")
         for attempt in range(self.max_retries + 1):
             try:
                 with self.opener(request, timeout=self.timeout) as response:
@@ -142,7 +150,7 @@ class ElderlyNodeClient:
         request = Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", **(extra_headers or {})},
+            headers=self._headers({"Content-Type": "application/json", **(extra_headers or {})}),
             method=method,
         )
         for attempt in range(self.max_retries + 1):
@@ -171,10 +179,10 @@ class ElderlyNodeClient:
         request = Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={
+            headers=self._headers({
                 "Content-Type": "application/json",
                 "Idempotency-Key": event_key,
-            },
+            }),
             method="POST",
         )
 

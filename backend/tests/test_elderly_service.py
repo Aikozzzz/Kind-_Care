@@ -37,7 +37,7 @@ class FailingCollection:
 
 @pytest.mark.parametrize(
     "operation",
-    ["create", "list", "get", "update", "delete"],
+    ["create", "list", "get", "update", "delete", "restore"],
 )
 async def test_profile_service_translates_pymongo_failures(operation: str) -> None:
     service = elderly_service.ElderlyProfileService(FailingCollection())
@@ -60,4 +60,7 @@ async def test_profile_service_translates_pymongo_failures(operation: str) -> No
                 ElderlyProfileUpdate(phone_number="555-0100"),
             )
         else:
-            await service.delete_profile("E900")
+            if operation == "delete":
+                await service.delete_profile("E900")
+            else:
+                await service.restore_profile("E900")

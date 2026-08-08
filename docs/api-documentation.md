@@ -4,9 +4,12 @@
 
 The local MVP exposes HTTP on `http://127.0.0.1:8000`, Swagger UI at
 `http://127.0.0.1:8000/docs`, WebSocket on the same server, and authenticated MQTT
-on `mqtt://127.0.0.1:1883`. HTTP and WebSocket have no user authentication or
-authorization. Bindings are loopback-only in Compose; do not expose them or use real
-care data.
+on `mqtt://127.0.0.1:1883`. `/health` is the only public data-free HTTP route.
+Protected routes require `Authorization: Bearer <session-token>` and an active
+account-to-resident relationship with the required permission. WebSocket connections
+use a short-lived single-use ticket created by `/api/auth/websocket-ticket/{elderly_id}`.
+Telegram routes use a separate internal service token. Bindings are loopback-only in
+Compose; do not expose them or use real care data.
 
 JSON timestamps are ISO 8601. Client timestamps must include a timezone and are
 normalized to UTC. `elderly_id` is 1-50 ASCII letters, digits, underscores, or
@@ -85,11 +88,26 @@ write models. Profile models use Pydantic's default extra-field handling.
 | Method and path | Success | Inputs | Other documented statuses |
 | --- | --- | --- | --- |
 | `GET /health` | `200` | None | `503` |
+| `POST /api/auth/bootstrap` | `201` | Bootstrap secret and administrator JSON | `404`, `409`, `422` |
+| `POST /api/auth/login` | `200` | Login JSON | `401`, `422` |
+| `POST /api/auth/logout` | `200` | Bearer session | `401` |
+| `GET /api/auth/me` | `200` | Bearer session | `401` |
+| `POST /api/auth/accounts` | `201` | Admin bearer session and account JSON | `401`, `403`, `409`, `422` |
+| `POST /api/auth/websocket-ticket/{elderly_id}` | `200` | Authorized bearer session | `401`, `404`, `422` |
+| `POST /api/relationships` | `201` | Admin bearer session and relationship JSON | `401`, `403`, `404`, `409`, `422` |
+| `GET /api/relationships` | `200` | Admin bearer session and optional `elderly_id` | `401`, `403`, `422` |
+| `PATCH /api/relationships/{relationship_id}` | `200` | Admin bearer session and permissions JSON | `401`, `403`, `404`, `422` |
+| `DELETE /api/relationships/{relationship_id}` | `200` | Admin bearer session | `401`, `403`, `404` |
+| `GET /api/relationships/mine` | `200` | Bearer session | `401` |
+| `POST /api/access-requests` | `201` | Bearer session and resident ID | `401`, `404`, `422` |
+| `GET /api/access-requests` | `200` | Admin bearer session | `401`, `403` |
+| `POST /api/access-requests/{request_id}/approve` | `200` | Admin bearer session | `401`, `403`, `404`, `409` |
 | `POST /api/elderly` | `201` | Profile JSON | `409`, `422`, `503` |
 | `GET /api/elderly` | `200` | `include_inactive`, `limit`, `offset` | `422`, `503` |
 | `GET /api/elderly/{elderly_id}` | `200` | Valid path ID | `404`, `422`, `503` |
 | `PATCH /api/elderly/{elderly_id}` | `200` | Non-empty profile update JSON | `404`, `422`, `503` |
 | `DELETE /api/elderly/{elderly_id}` | `200` | Valid path ID | `404`, `422`, `503` |
+| `POST /api/elderly/{elderly_id}/restore` | `200` | Admin bearer session and archived profile ID | `401`, `403`, `404`, `422`, `503` |
 | `POST /api/health` | `202` | `Idempotency-Key`, health JSON | `404`, `409`, `422`, `503` |
 | `GET /api/health/{elderly_id}` | `200` | `limit`, `offset` | `422`, `503` |
 | `POST /api/activity` | `202` | `Idempotency-Key`, activity JSON | `404`, `409`, `422`, `503` |
@@ -103,9 +121,48 @@ write models. Profile models use Pydantic's default extra-field handling.
 | `PATCH /api/alerts/{alert_id}` | `200` | Lifecycle target JSON | `404`, `409`, `422`, `503` |
 | `GET /api/dashboard/{elderly_id}` | `200` | Valid path ID | `404`, `422`, `503` |
 | `WS /ws/dashboard/{elderly_id}` | Accepted socket | Allowed `Origin` and active profile | Close `4403`, `4404`, or `1011` |
+| `POST /api/telegram/link` | `200` | Bearer session | `401`, `422` |
+| `POST /api/telegram/admin/link/{account_id}` | `200` | Admin bearer session and active family account | `401`, `403`, `404`, `422` |
+| `GET /api/telegram/admin/bindings` | `200` | Admin bearer session and `elderly_id` | `401`, `403`, `404`, `422` |
+| `DELETE /api/telegram/admin/bindings/{telegram_user_id}` | `200` | Admin bearer session | `401`, `403`, `404` |
+| `POST /api/telegram/unlink` | `200` | Bearer session | `401` |
+| `POST /api/telegram/bind` | `200` | Internal Telegram service token and one-time code | `400`, `404`, `422` |
+| `POST /api/telegram/status` | `200` | Internal Telegram service token and bound user ID | `404`, `422` |
+| `POST /api/telegram/request` | `200` | Internal Telegram service token and bound user ID | `404`, `422` |
+| `POST /api/internal/telegram/claim` | `200` | Internal Telegram service token | `404` |
+| `POST /api/internal/telegram/complete` | `200` | Internal Telegram service token and delivery result | `404`, `422` |
 
 There is no public endpoint for creating alerts. Health workers and the three scanner
 families create them from monitored conditions.
+
+## Admin Resident And Trusted Family Management
+
+Profile creation, update, archive, and restore require an administrator bearer session.
+`DELETE /api/elderly/{elderly_id}` is non-destructive: it sets `active=false` and
+retains history. Archived profiles are hidden from normal resident lists and pending
+Telegram notification intents are closed without delivery. `POST /api/elderly/{elderly_id}/restore`
+makes the profile active again; existing relationships
+remain available after restoration.
+
+`GET /api/relationships?elderly_id=E001` is administrator-only and returns active
+relationships with account display/login metadata. `PATCH /api/relationships/{relationship_id}`
+replaces the relationship permission list, and
+`DELETE` revokes that relationship without deleting its audit record. The dashboard
+uses a family relationship with `read_profile`, `read_dashboard`,
+`query_telegram_status`, and `receive_telegram_alerts` as its default trusted-family
+permission set.
+
+An administrator creates a family account through `POST /api/auth/accounts`, creates
+the family relationship, and then calls `POST /api/telegram/admin/link/{account_id}`.
+The returned one-time code is sent to the family member out of band. The family member
+must send `/link CODE` from a private chat with the bot. The administrator can inspect
+active bindings with `GET /api/telegram/admin/bindings?elderly_id=E001` and revoke one
+binding with `DELETE /api/telegram/admin/bindings/{telegram_user_id}`. The API never
+allows group-chat binding.
+
+Alert messages contain only the resident ID, alert type, and severity. `/status E001`
+returns the resident ID, current risk, device status, active alert count, and latest
+reading timestamp when the bound family account has `query_telegram_status`.
 
 ## Common Headers And Query Bounds
 

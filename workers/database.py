@@ -198,6 +198,27 @@ def create_indexes(database: Database) -> None:
         [("status", 1), ("scheduled_for", 1), ("reminder_id", 1)],
         "reminder_missed_scan",
     )
+    notification_events = getattr(database, "alert_notification_events", None)
+    if notification_events is not None:
+        ensure_named_index(
+            notification_events,
+            [("alert_id", 1), ("notification_kind", 1)],
+            "unique_alert_notification_event",
+            unique=True,
+        )
+        ensure_named_index(
+            notification_events,
+            [("status", 1), ("next_attempt_at", 1)],
+            "notification_delivery_queue",
+        )
+    deliveries = getattr(database, "telegram_deliveries", None)
+    if deliveries is not None:
+        ensure_named_index(
+            deliveries,
+            [("notification_event_id", 1), ("telegram_user_id", 1)],
+            "unique_telegram_delivery",
+            unique=True,
+        )
 
 
 @worker_init.connect

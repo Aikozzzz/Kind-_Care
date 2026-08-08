@@ -17,9 +17,17 @@ services:
       WEBSOCKET_POLL_INTERVAL: ${WEBSOCKET_POLL_INTERVAL:-1.0}
       WEBSOCKET_HEARTBEAT_INTERVAL: ${WEBSOCKET_HEARTBEAT_INTERVAL:-15.0}
       WEBSOCKET_ALLOWED_ORIGINS: ${WEBSOCKET_ALLOWED_ORIGINS:-http://localhost:8501,http://127.0.0.1:8501}
+      WEBSOCKET_AUTH_REQUIRED: ${WEBSOCKET_AUTH_REQUIRED:-true}
       ACTIVITY_INACTIVITY_SECONDS: ${ACTIVITY_INACTIVITY_SECONDS:-3600}
       DEVICE_OFFLINE_SECONDS: ${DEVICE_OFFLINE_SECONDS:-120}
       DEVICE_OFFLINE_SCAN_SECONDS: ${DEVICE_OFFLINE_SCAN_SECONDS:-30}
+      AUTH_SESSION_SECONDS: ${AUTH_SESSION_SECONDS:-3600}
+      AUTH_BOOTSTRAP_SECRET: ${AUTH_BOOTSTRAP_SECRET:-}
+      TELEMETRY_SERVICE_TOKEN: ${TELEMETRY_SERVICE_TOKEN:-kindcare_telemetry_dev_only}
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
+      TELEGRAM_SERVICE_TOKEN: ${TELEGRAM_SERVICE_TOKEN:-}
+      TELEGRAM_HTTP_TIMEOUT: ${TELEGRAM_HTTP_TIMEOUT:-10}
+      TELEGRAM_DELIVERY_LEASE_SECONDS: ${TELEGRAM_DELIVERY_LEASE_SECONDS:-60}
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
@@ -182,6 +190,7 @@ services:
       MQTT_HEALTH_FILE: /tmp/kindcare-mqtt-connected
       MQTT_HEALTH_MAX_AGE_SECONDS: ${MQTT_HEALTH_MAX_AGE_SECONDS:-15}
       API_BASE_URL: http://backend:8000
+      TELEMETRY_SERVICE_TOKEN: ${TELEMETRY_SERVICE_TOKEN:-kindcare_telemetry_dev_only}
     healthcheck:
       test: ["CMD-SHELL", "python -m mqtt_ingestor.healthcheck"]
       interval: 10s
@@ -191,6 +200,23 @@ services:
     depends_on:
       mosquitto:
         condition: service_healthy
+      backend:
+        condition: service_healthy
+
+  telegram-bot:
+    profiles: ["telegram"]
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: telegram_bot/Dockerfile
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_SERVICE_TOKEN: ${TELEGRAM_SERVICE_TOKEN:-}
+      TELEGRAM_BACKEND_URL: http://backend:8000
+      TELEGRAM_HTTP_TIMEOUT: ${TELEGRAM_HTTP_TIMEOUT:-10}
+      TELEGRAM_POLL_TIMEOUT: ${TELEGRAM_POLL_TIMEOUT:-30}
+      TELEGRAM_RETRY_SECONDS: ${TELEGRAM_RETRY_SECONDS:-5}
+    depends_on:
       backend:
         condition: service_healthy
 

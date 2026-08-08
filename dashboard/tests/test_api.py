@@ -37,6 +37,20 @@ class Session:
             raise response
         return response
 
+    def post(self, url: str, *, json: dict[str, object], timeout: float, headers=None):
+        self.calls.append((url, json, timeout))
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    def delete(self, url: str, *, timeout: float, headers=None):
+        self.calls.append((url, None, timeout))
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
 
 def test_api_returns_data_from_success_envelope() -> None:
     session = Session([Response(200, {"success": True, "data": {"current_risk": "normal"}})])
@@ -63,6 +77,33 @@ def test_api_lists_up_to_one_hundred_active_profiles() -> None:
             3,
         )
     ]
+
+
+def test_api_supports_admin_profile_restore_and_family_telegram_link() -> None:
+    session = Session(
+        [
+            Response(201, {"success": True, "data": {"elderly_id": "E002"}}),
+            Response(200, {"success": True, "data": {"active": True}}),
+            Response(200, {"success": True, "data": {"code": "link-code"}}),
+        ]
+    )
+    api = KindCareAPI("http://backend:8000", session=session)
+
+    api.create_profile({"elderly_id": "E002"})
+    api.restore_profile("E002")
+    assert api.create_family_telegram_link("account/1")["code"] == "link-code"
+    assert session.calls == [
+        ("http://backend:8000/api/elderly", {"elderly_id": "E002"}, 5.0),
+        ("http://backend:8000/api/elderly/E002/restore", {}, 5.0),
+        ("http://backend:8000/api/telegram/admin/link/account%2F1", {"expires_in_seconds": 600}, 5.0),
+    ]
+
+
+def test_api_accepts_created_response_for_account_creation() -> None:
+    session = Session([Response(201, {"success": True, "data": {"account_id": "a1"}})])
+    api = KindCareAPI("http://backend:8000", session=session)
+
+    assert api.create_account({"role": "family"}) == {"account_id": "a1"}
 
 
 def test_api_sends_bounded_history_parameters() -> None:

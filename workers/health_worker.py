@@ -15,6 +15,7 @@ from pymongo.errors import (
 from analysis.risk_analysis import analyze_health
 from workers.celery_app import celery_app
 from workers.database import get_database
+from workers.notifications import enqueue_alert_notification
 
 
 TRANSIENT_DB_ERRORS = (
@@ -114,9 +115,10 @@ def persist_health_event(
             }
 
         for finding in assessment.findings:
+            alert_id = derive_public_alert_id(event_id, finding.alert_type)
             database.alerts.insert_one(
                 {
-                    "alert_id": derive_public_alert_id(event_id, finding.alert_type),
+                    "alert_id": alert_id,
                     "event_id": event_id,
                     "elderly_id": elderly_id,
                     "alert_type": finding.alert_type,
@@ -126,6 +128,9 @@ def persist_health_event(
                     "created_at": created_at,
                 },
                 session=session,
+            )
+            enqueue_alert_notification(
+                database, alert_id=alert_id, elderly_id=elderly_id, session=session
             )
 
         return {

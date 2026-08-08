@@ -18,7 +18,8 @@ list application-created indexes separately.
 
 ## Collection Inventory
 
-There are 16 application collections.
+There are 25 application collections, including account, relationship, and optional
+Telegram delivery collections.
 
 | Collection | Primary owner | Purpose and retention |
 | --- | --- | --- |
@@ -38,8 +39,37 @@ There are 16 application collections.
 | `schema_migrations` | FastAPI startup | Durable completion markers; retained indefinitely |
 | `alert_id_migration_claims` | Alert-ID startup migration | Stable per-document claims during migration; retained for safe retries |
 | `service_health` | Beat task writes; Worker/Beat healthchecks read | One shared processed scheduler/worker heartbeat document |
+| `accounts` | FastAPI auth service | Password hashes and account status; retained until administrative deletion |
+| `auth_sessions` | FastAPI auth service | Hashed opaque bearer sessions; TTL-cleaned after expiry |
+| `account_elderly_relationships` | FastAPI relationship service | Explicit resident permissions; retained for audit after revocation |
+| `access_requests` | FastAPI relationship service | Pending family access requests; retained for audit |
+| `websocket_tickets` | FastAPI auth service | Short-lived single-use dashboard tickets; TTL-cleaned |
+| `telegram_link_tokens` | FastAPI Telegram service | Hashed one-time Telegram binding codes; TTL-cleaned |
+| `telegram_bindings` | FastAPI Telegram service | Verified private Telegram account bindings; retained until revoked |
+| `alert_notification_events` | Worker transaction and Telegram dispatcher | One durable intent per alert notification; retained with delivery outcome |
+| `telegram_deliveries` | Telegram dispatcher | Per-recipient delivery state; retained with notification outcome |
+
+Account and Telegram identifiers are not medical data, but are still sensitive. Raw
+passwords, bearer tokens, bot tokens, and chat IDs are never logged. Notification
+intents are inserted in the same MongoDB transaction as alert creation; Telegram HTTP
+calls occur only after a dispatcher claims an intent.
 
 ## Domain Collections
+
+### Accounts, Relationships, And Telegram Bindings
+
+`accounts` stores active/disabled human accounts with password hashes; administrator
+account creation is the supported family onboarding path. `account_elderly_relationships`
+stores explicit per-resident permissions. Administrator permission updates replace the
+permission list, while revocation sets `status=revoked` and retains the record for audit.
+
+`telegram_link_tokens` stores only SHA-256 hashes of short-lived one-time codes. The
+administrator-targeted link endpoint records the intended family `account_id`; the
+family member completes the binding from a private chat. `telegram_bindings` stores one
+active private binding per Telegram user and remains until the family member or an
+administrator revokes it. Multiple family accounts and bindings can be active for one
+resident. Alert delivery still requires an active relationship with
+`receive_telegram_alerts`.
 
 ### `elderly_profiles`
 
@@ -64,7 +94,9 @@ Representative document:
 `date_of_birth` is inserted from `model_dump(mode="json")` and is therefore stored
 as an ISO date string. `created_at`/`updated_at` are server UTC BSON datetimes.
 Deletion is non-destructive: `active=false` and `updated_at` changes. Profile data is
-not cascaded to histories.
+not cascaded to histories. Administrators can restore an archived document by setting
+`active=true`; existing relationships are retained for restoration, while archived
+profiles are excluded from normal access and pending Telegram notification claims.
 
 Application index:
 

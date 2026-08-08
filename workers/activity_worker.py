@@ -11,6 +11,7 @@ from pymongo.errors import DuplicateKeyError
 
 from workers.celery_app import celery_app
 from workers.database import get_database
+from workers.notifications import enqueue_alert_notification
 from workers.health_worker import (
     EventPayloadConflict,
     TRANSIENT_DB_ERRORS,
@@ -380,6 +381,12 @@ def scan_inactive_profiles(
                     }
                 },
                 upsert=True,
+                session=session,
+            )
+            enqueue_alert_notification(
+                database,
+                alert_id=derive_public_alert_id(state["event_id"], "long_inactivity"),
+                elderly_id=state["elderly_id"],
                 session=session,
             )
             database.activity_state.update_one(

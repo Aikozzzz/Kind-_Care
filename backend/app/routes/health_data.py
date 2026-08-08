@@ -13,10 +13,13 @@ from app.models.health import (
 )
 from app.services.elderly import ElderlyProfileNotFound
 from app.services.health import HealthEventService, derive_health_event_id
+from app.services.auth import Principal, get_telemetry_principal, require_relationship_permission
 
 
 router = APIRouter(prefix="/api/health", tags=["health"])
 ServiceDependency = Annotated[HealthEventService, Depends(get_health_service)]
+TelemetryDependency = Annotated[Principal, Depends(get_telemetry_principal)]
+ReadDependency = Annotated[Principal, require_relationship_permission("read_health")]
 IdempotencyKeyHeader = Annotated[
     IdempotencyKey,
     Header(alias="Idempotency-Key"),
@@ -32,6 +35,7 @@ async def queue_health_event(
     request: HealthEventCreate,
     service: ServiceDependency,
     idempotency_key: IdempotencyKeyHeader,
+    _: TelemetryDependency,
 ) -> SuccessResponse[QueuedHealthEvent]:
     event_id = derive_health_event_id(request.elderly_id, idempotency_key)
     try:
@@ -51,6 +55,7 @@ async def queue_health_event(
 async def list_health_history(
     elderly_id: ElderlyId,
     service: ServiceDependency,
+    _: ReadDependency,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0, le=10_000)] = 0,
 ) -> SuccessResponse[list[HealthRecord]]:

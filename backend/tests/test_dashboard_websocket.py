@@ -73,6 +73,7 @@ def websocket_client(
         websocket_poll_interval=poll,
         websocket_heartbeat_interval=heartbeat,
         websocket_allowed_origins="http://localhost:8501",
+        websocket_auth_required=False,
     )
     hub = DashboardHub(service, poll_interval=settings.websocket_poll_interval)
     app.dependency_overrides[get_dashboard_hub] = lambda: hub
@@ -246,6 +247,7 @@ async def test_allowed_websocket_sends_configured_heartbeat_immediately() -> Non
     settings = Settings(
         websocket_allowed_origins="http://localhost:8501",
         websocket_heartbeat_interval=60,
+        websocket_auth_required=False,
     )
 
     await dashboard_websocket(websocket, "E001", hub, settings)
@@ -262,7 +264,10 @@ async def test_origin_is_decided_before_accept_but_transports_4403_close_code() 
     websocket = RecordingWebSocket("https://attacker.example")
     service = SequenceDashboardService([make_summary()])
     hub = DashboardHub(service, poll_interval=1)
-    settings = Settings(websocket_allowed_origins="http://localhost:8501")
+    settings = Settings(
+        websocket_allowed_origins="http://localhost:8501",
+        websocket_auth_required=False,
+    )
 
     await dashboard_websocket(websocket, "E001", hub, settings)
 
@@ -275,7 +280,10 @@ async def test_unknown_profile_lookup_precedes_accept_and_transports_4404() -> N
     websocket = RecordingWebSocket("http://localhost:8501")
     service = SequenceDashboardService([ElderlyProfileNotFound("E404")])
     hub = DashboardHub(service, poll_interval=1)
-    settings = Settings(websocket_allowed_origins="http://localhost:8501")
+    settings = Settings(
+        websocket_allowed_origins="http://localhost:8501",
+        websocket_auth_required=False,
+    )
 
     await dashboard_websocket(websocket, "E404", hub, settings)
 

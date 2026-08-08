@@ -20,6 +20,10 @@ def test_css_follows_kindcare_design_contract() -> None:
     assert ".resident-card" in css
     assert ".vitals-grid" in css
     assert ".overview-grid" in css
+    assert ".overview-stats" in css
+    assert ".attention-card" in css
+    assert ".directory-card" in css
+    assert ".nav-group-label" in css
     assert "@media (max-width: 900px)" in css
     assert '[data-testid="sthorizontalblock"]' in css
     assert '[data-testid="stcolumn"]' in css
@@ -120,6 +124,17 @@ def test_sidebar_links_select_real_dashboard_views() -> None:
     assert 'aria-current="page"' in source
 
 
+def test_sidebar_groups_monitoring_and_management_navigation() -> None:
+    source = Path("dashboard/app.py").read_text(encoding="utf-8")
+
+    assert '("Main",' in source
+    assert '("Care",' in source
+    assert '("Management",' in source
+    assert '"residents"' in source
+    assert '"monitoring"' in source
+    assert '"family"' in source
+
+
 def test_live_component_uses_real_public_websocket_and_reconnects_accessibly() -> None:
     html = build_live_panel_html("ws://localhost:8000/", "E 001", 60.0)
     lowered = html.lower()
@@ -142,6 +157,13 @@ def test_live_component_uses_real_public_websocket_and_reconnects_accessibly() -
     assert "<img" not in lowered
     assert "gradient" not in lowered
     assert "shadow" not in lowered
+
+
+def test_live_component_sends_ticket_before_receiving_summary() -> None:
+    html = build_live_panel_html("ws://localhost:8000", "E001", 15.0, "ticket-123")
+
+    assert 'const authTicket = "ticket-123";' in html
+    assert 'current.send(JSON.stringify({ type: "authenticate", ticket: authTicket }));' in html
 
 
 def test_live_component_wraps_long_output_without_horizontal_scroll() -> None:

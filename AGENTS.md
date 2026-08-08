@@ -12,7 +12,8 @@ guidance and is not authoritative.
 
 ## Safety And Trust Boundary
 
-- HTTP and WebSocket have no authentication or authorization in this local MVP.
+- Protected HTTP and WebSocket routes require bearer account authentication and an
+  explicit account-to-resident relationship. `/health` remains data-free and public.
 - Compose publishes interfaces only on `127.0.0.1`. Never expose this release or use
   real personal/medical data.
 - RabbitMQ uses a non-guest local account. Compose directly interpolates
@@ -25,8 +26,9 @@ guidance and is not authoritative.
   do not treat it as release documentation or source.
 - `backend/.env.example` is backend-only direct-run configuration. Do not put worker,
   dashboard, broker, or MQTT settings there.
-- No TLS, per-device ACL, production secret management, or notification delivery is
-  implemented. Do not imply otherwise in code or documentation.
+- No TLS, production secret management, credential rotation, or per-device MQTT ACL
+  is implemented. Optional Telegram polling and alert outbox delivery are local-MVP
+  integrations; do not imply clinical or production-grade messaging guarantees.
 
 ## Current Eight-Service Stack
 
@@ -40,6 +42,9 @@ guidance and is not authoritative.
 | `mongodb` | Single-node `rs0` transaction-capable database |
 | `rabbitmq` | Celery broker and local management interface |
 | `mosquitto` | Authenticated persistent MQTT 3.1.1 broker |
+
+The optional Compose `telegram` profile adds `telegram-bot`, an outbound polling
+adapter. It has no inbound public port and is disabled unless explicitly configured.
 
 FastAPI remains the validation/reservation/publication authority. MQTT ingestor must
 not import backend business services or access MongoDB. Workers remain risk and
@@ -62,11 +67,27 @@ Compose gates Worker and Beat on healthy Backend.
 ```text
 GET    /health
 
+POST   /api/auth/bootstrap
+POST   /api/auth/login
+POST   /api/auth/logout
+GET    /api/auth/me
+POST   /api/auth/accounts
+POST   /api/auth/websocket-ticket/{elderly_id}
+POST   /api/relationships
+GET    /api/relationships
+PATCH  /api/relationships/{relationship_id}
+DELETE /api/relationships/{relationship_id}
+GET    /api/relationships/mine
+POST   /api/access-requests
+GET    /api/access-requests
+POST   /api/access-requests/{request_id}/approve
+
 POST   /api/elderly
 GET    /api/elderly
 GET    /api/elderly/{elderly_id}
 PATCH  /api/elderly/{elderly_id}
 DELETE /api/elderly/{elderly_id}
+POST   /api/elderly/{elderly_id}/restore
 
 POST   /api/health
 GET    /api/health/{elderly_id}
@@ -84,6 +105,15 @@ PATCH  /api/alerts/{alert_id}
 
 GET    /api/dashboard/{elderly_id}
 WS     /ws/dashboard/{elderly_id}
+
+POST   /api/telegram/link
+POST   /api/telegram/admin/link/{account_id}
+GET    /api/telegram/admin/bindings
+DELETE /api/telegram/admin/bindings/{telegram_user_id}
+POST   /api/telegram/unlink
+POST   /api/telegram/bind
+POST   /api/telegram/status
+POST   /api/telegram/request
 ```
 
 Alerts are created by health processing and activity/device/reminder scanners, not a
@@ -126,6 +156,7 @@ analysis/       Pure deterministic health risk rules
 client_nodes/   HTTP/MQTT clients and scenario simulator
 mqtt_ingestor/  Topic routing, HTTP bridge, Paho lifecycle/backpressure/health
 dashboard/      Streamlit app, summary rendering, live browser component
+telegram_bot/   Optional outbound Telegram polling adapter
 mosquitto/      Broker config and credential-generating entrypoint
 ```
 
@@ -145,7 +176,8 @@ mosquitto/      Broker config and credential-generating entrypoint
 - Do not add dependencies without a concrete need. Update direct requirements and
   regenerate the component lock file together.
 - Never log medical payloads, raw MQTT topics, elderly/reminder IDs, idempotency keys,
-  or credentials from the MQTT bridge.
+  Telegram bot tokens, Telegram chat/user IDs, access tokens, or credentials from any
+  bridge/bot.
 - Preserve loopback host bindings and internal-only database/AMQP networking unless a
   separately reviewed security design changes the trust model.
 - Treat `DESIGN.md` as user-supplied upstream visual reference. Do not rewrite it.

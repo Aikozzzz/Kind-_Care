@@ -82,7 +82,12 @@ def test_cli_prints_queued_event_and_uses_configured_options(capsys, monkeypatch
     assert exit_code == 0
     assert calls[0] == (
         "http://api:8000",
-        {"timeout": 2.0, "max_retries": 4, "backoff": 0.1},
+        {
+            "timeout": 2.0,
+            "max_retries": 4,
+            "backoff": 0.1,
+            "auth_token": "kindcare_telemetry_dev_only",
+        },
     )
     assert [call[0] for call in calls[1:]] == ["health", "activity", "heartbeat"]
     assert calls[2][1]["value"] == "active"

@@ -1,0 +1,1 @@
+"""KindCare Telegram polling adapter."""

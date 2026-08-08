@@ -16,6 +16,11 @@ from app.routes.health_data import router as health_data_router
 from app.routes.activity import router as activity_router
 from app.routes.device_status import router as device_status_router
 from app.routes.reminders import router as reminders_router
+from app.routes.auth import router as auth_router
+from app.routes.relationships import router as relationships_router
+from app.routes.telegram import router as telegram_router
+from app.routes.telegram_internal import router as telegram_internal_router
+from app.routes.access_requests import router as access_requests_router
 from app.services.elderly import ElderlyProfileStorageUnavailable
 from app.services.dashboard import DashboardStorageUnavailable
 from app.services.health import HealthBrokerUnavailable, HealthStorageUnavailable
@@ -46,6 +51,11 @@ app.include_router(websocket_router)
 app.include_router(activity_router)
 app.include_router(device_status_router)
 app.include_router(reminders_router)
+app.include_router(auth_router)
+app.include_router(relationships_router)
+app.include_router(telegram_router)
+app.include_router(telegram_internal_router)
+app.include_router(access_requests_router)
 
 
 @app.exception_handler(IdempotencyConflict)

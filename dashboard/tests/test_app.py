@@ -33,6 +33,7 @@ HEALTH = [
 
 @pytest.fixture(autouse=True)
 def active_profiles(monkeypatch) -> None:
+    monkeypatch.setenv("DASHBOARD_AUTH_DISABLED", "true")
     monkeypatch.setattr(
         KindCareAPI,
         "get_profiles",
@@ -343,3 +344,40 @@ def test_direct_id_still_loads_when_profile_listing_is_unavailable(monkeypatch) 
     assert summary_calls == ["E001"]
     assert not app.error
     assert not app.exception
+
+
+def test_admin_view_renders_profile_and_family_management(monkeypatch) -> None:
+    profiles = [
+        {**SUMMARY["profile"], "active": True, "date_of_birth": "1948-04-12"},
+        {
+            "elderly_id": "E002",
+            "full_name": "Archived Resident",
+            "date_of_birth": "1945-01-01",
+            "active": False,
+        },
+    ]
+    monkeypatch.setattr(
+        KindCareAPI,
+        "get_profiles",
+        lambda self, limit=100, include_inactive=False: profiles,
+    )
+    monkeypatch.setattr(KindCareAPI, "get_relationships", lambda self, elderly_id: [])
+    monkeypatch.setattr(KindCareAPI, "get_telegram_bindings", lambda self, elderly_id: [])
+
+    app = AppTest.from_file("dashboard/app.py", default_timeout=15)
+    app.session_state["account"] = {"display_name": "Demo Administrator", "role": "admin"}
+    app.query_params["view"] = "admin"
+    app.run()
+
+    assert not app.exception
+    assert app.title[0].value == "Administration"
+    assert any("Resident profiles" in heading.value for heading in app.subheader)
+
+    family_app = AppTest.from_file("dashboard/app.py", default_timeout=15)
+    family_app.session_state["account"] = {"display_name": "Demo Administrator", "role": "admin"}
+    family_app.query_params["view"] = "family"
+    family_app.run()
+
+    assert not family_app.exception
+    assert family_app.title[0].value == "Family & Caregivers"
+    assert any("Trusted family members" in markdown.value for markdown in family_app.markdown)

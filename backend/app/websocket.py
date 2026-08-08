@@ -19,6 +19,8 @@ from app.models.elderly import ElderlyId
 from app.services.dashboard import DashboardStorageUnavailable
 from app.services.dashboard_live import DashboardHub, DashboardSubscription
 from app.services.elderly import ElderlyProfileNotFound
+from app.services.auth import InvalidCredentials, RelationshipDenied, consume_websocket_ticket
+from pymongo.asynchronous.database import AsyncDatabase
 
 
 router = APIRouter(tags=["dashboard-live"])
@@ -59,18 +61,26 @@ async def dashboard_websocket(
         await websocket.close(code=4403, reason="WebSocket origin is not allowed")
         return
 
+    await websocket.accept()
+    if settings.websocket_auth_required:
+        try:
+            message = await asyncio.wait_for(websocket.receive_json(), timeout=5)
+            if not isinstance(message, dict) or message.get("type") != "authenticate" or not isinstance(message.get("ticket"), str):
+                raise InvalidCredentials("WebSocket authentication failed")
+            await consume_websocket_ticket(websocket.app.state.database, message["ticket"], elderly_id)
+        except (InvalidCredentials, RelationshipDenied, asyncio.TimeoutError, ValueError, RuntimeError):
+            await websocket.close(code=4401, reason="WebSocket authentication failed")
+            return
+
     try:
         subscription = await hub.subscribe(elderly_id)
     except ElderlyProfileNotFound:
-        await websocket.accept()
         await websocket.close(code=4404, reason="Elderly profile not found")
         return
     except DashboardStorageUnavailable:
-        await websocket.accept()
         await _send_storage_error(websocket)
         return
 
-    await websocket.accept()
     await websocket.send_json(
         _message_payload(DashboardSummaryMessage(data=subscription.initial))
     )

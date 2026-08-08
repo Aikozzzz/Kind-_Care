@@ -19,9 +19,18 @@ class Settings(BaseSettings):
     websocket_allowed_origins: str = (
         "http://localhost:8501,http://127.0.0.1:8501"
     )
+    websocket_auth_required: bool = True
     activity_inactivity_seconds: float = Field(default=3600, gt=0)
     device_offline_seconds: float = Field(default=120, gt=0)
     device_offline_scan_seconds: float = Field(default=30, gt=0)
+    auth_session_seconds: int = Field(default=3600, ge=300, le=86_400)
+    auth_bootstrap_secret: str = ""
+    telemetry_service_token: str = ""
+    telegram_enabled: bool = False
+    telegram_bot_token: str = ""
+    telegram_service_token: str = ""
+    telegram_http_timeout: float = Field(default=10, gt=0, le=60)
+    telegram_delivery_lease_seconds: int = Field(default=60, ge=10, le=3600)
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

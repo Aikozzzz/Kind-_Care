@@ -1,4 +1,5 @@
 import argparse
+import os
 import time
 from datetime import UTC, datetime, timedelta
 from collections.abc import Iterator, Sequence
@@ -65,6 +66,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--backoff", type=float, default=0.5)
+    parser.add_argument(
+        "--auth-token", default=os.environ.get("TELEMETRY_SERVICE_TOKEN", "kindcare_telemetry_dev_only")
+    )
     parser.add_argument("--reminder-demo", choices=["taken", "missed"])
     parser.add_argument("--reminder-medicine", default="KindCare demo medicine")
     parser.add_argument("--reminder-delay", type=float, default=2.0)
@@ -141,6 +145,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         timeout=args.timeout,
         max_retries=args.retries,
         backoff=args.backoff,
+        auth_token=args.auth_token,
     )
     if args.reminder_demo is not None:
         return run_reminder_demo(args, client)

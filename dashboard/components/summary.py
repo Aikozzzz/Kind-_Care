@@ -78,6 +78,11 @@ def build_profile_card_html(
     device_badge, device_class = device_badges.get(
         device_status, ("Device status unavailable", "device-unavailable")
     )
+    risk = str(summary.get("current_risk", "normal"))
+    risk_badge, risk_class = {
+        "emergency": ("Critical", "risk-critical"),
+        "warning": ("Needs attention", "risk-warning"),
+    }.get(risk, ("Stable", "risk-stable"))
     return f"""
 <div class="resident-card" id="resident-profile">
   <div class="resident-avatar" aria-hidden="true">{escape(_initials(full_name))}</div>
@@ -86,6 +91,7 @@ def build_profile_card_html(
     <div class="resident-meta">Resident ID {escape(str(profile['elderly_id']))} &nbsp;·&nbsp; {escape(_age(profile.get('date_of_birth'), current_day))}</div>
     <div class="resident-badges">
       <span class="status-pill profile-active">Profile active</span>
+      <span class="status-pill {risk_class}">{risk_badge}</span>
       <span class="status-pill {device_class}">{escape(device_badge)}</span>
     </div>
   </div>
@@ -357,10 +363,10 @@ def render_alerts(alerts: list[dict[str, object]], on_status=None) -> None:
         st.markdown(
             f"""
 <div class="alert-row alert-{escape(severity)}">
-  <strong>{severity_label}</strong>
+  <span class="alert-severity {escape(severity)}">{severity_label}</span>
   <div><strong>{escape(alert_type)}</strong><br>
     <span class="alert-message">{escape(str(alert.get('message', '')))}</span></div>
-  <div class="meta alert-time">Created {created_at}<br>{escape(str(alert.get('status', '')).title())}</div>
+  <div class="meta alert-time"><span class="alert-status">{escape(str(alert.get('status', '')).title())}</span><br>Created {created_at}</div>
 </div>
 """,
             unsafe_allow_html=True,
